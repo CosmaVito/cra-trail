@@ -50,7 +50,7 @@ public class DisclosureTests
     {
         await using var app = new InboxApp(new Dictionary<string, string?> { [key] = value });
 
-        var error = Record.Exception(() => app.CreateBrowser());
+        var error = app.StartupError();
 
         Assert.NotNull(error);
         Assert.Contains(named, error.ToString(), StringComparison.Ordinal);

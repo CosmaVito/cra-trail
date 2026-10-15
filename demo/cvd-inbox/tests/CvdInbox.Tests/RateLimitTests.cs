@@ -74,7 +74,7 @@ public class RateLimitTests
     {
         await using var app = App(("Inbox:TrustedProxies:0", "proxy.internal"));
 
-        var error = Record.Exception(() => app.CreateBrowser());
+        var error = app.StartupError();
 
         Assert.NotNull(error);
         Assert.Contains("Inbox:TrustedProxies", error.ToString(), StringComparison.Ordinal);

@@ -22,6 +22,9 @@ public sealed class InboxApp : WebApplicationFactory<Program>
 
     private readonly bool retentionSweep;
 
+    // Owned by the test, not by the app's services: its records outlive a host that was disposed after a failed start.
+    private readonly FakeLogCollector logs = new();
+
     // The background retention sweep runs only when a test asks for it: its sweeps and log truncates would race the test's own steps.
     public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = false)
     {
@@ -50,10 +53,18 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         return client;
     }
 
-    public IReadOnlyList<FakeLogRecord> Logs() => Services.GetFakeLogCollector().GetSnapshot();
+    public IReadOnlyList<FakeLogRecord> Logs() => logs.GetSnapshot();
 
     public IReadOnlyList<FakeLogRecord> SecurityEvents() =>
         [.. Logs().Where(record => record.Category == CvdInbox.Security.SecurityEvents.Category)];
+
+    // Starts an app that should not start, and returns why. A validation error inside RunAsync disposes the host, and the
+    // factory may then report the disposed host instead of the error; the host logs the error first, so the record has it.
+    public Exception? StartupError()
+    {
+        var thrown = Record.Exception(() => CreateBrowser());
+        return Logs().LastOrDefault(record => record.Id.Name == "HostedServiceStartupFaulted")?.Exception ?? thrown;
+    }
 
     public async Task<T> InScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
     {
@@ -85,6 +96,7 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
+            services.AddSingleton(logs);
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
             if (!retentionSweep)
