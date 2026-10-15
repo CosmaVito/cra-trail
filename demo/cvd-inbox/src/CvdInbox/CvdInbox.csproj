@@ -6,7 +6,13 @@
     <IsPackable>false</IsPackable>
     <!-- Keeps the linux-x64 restore in packages.lock.json, so the release publish does not change it. -->
     <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+    <!-- No IIS: keep web.config out of the Linux zip and image. -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Development settings stay out of the release zip and image. -->
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
