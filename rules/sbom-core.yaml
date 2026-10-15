@@ -1,0 +1,24 @@
+id: sbom-core
+title: Core SBOM fields
+source: "Reg. (EU) 2024/2847, Annex I, Part II, point 1"
+fields:
+  - id: timestamp
+    path: metadata.timestamp
+    require: non-empty
+  - id: component-name
+    each: components
+    path: name
+    require: non-empty
+  - id: component-version
+    each: components
+    skip-assemblies: true
+    path: version
+    require: non-empty
+  - id: component-purl
+    each: components
+    skip-assemblies: true
+    path: purl
+    require: non-empty
+  - id: dependencies
+    path: dependencies
+    require: non-empty

@@ -9,4 +9,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="CraTrail.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\rules\*.yaml" LogicalName="CraTrail.Rules.%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

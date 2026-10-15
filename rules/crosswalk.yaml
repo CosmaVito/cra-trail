@@ -1,0 +1,204 @@
+version: "2026.10"
+gate:
+  - no-kev-without-vex
+  - no-critical-without-vex
+  - no-secrets
+  - sbom-core-fields
+  - support-end-set
+  - cvd-contact-set
+checks:
+  cvd-contact-set:
+    type: attested-field
+    field: product.cvdContact
+    hint: Set product.cvd-contact in cra.yml.
+  cvd-policy-present:
+    type: file-present
+    kind: cvd-policy
+    hint: Add a SECURITY.md with your disclosure policy and pass it with --cvd-policy.
+  distribution-signed:
+    type: attested-field
+    field: manifest.signing.method
+  no-critical-without-vex:
+    type: vex-covers
+    kind: grype
+    select:
+      min-cvss: 9.0
+    hint: Upgrade the component, or add an OpenVEX statement with status not_affected or fixed and a justification.
+  no-kev-without-vex:
+    type: vex-covers
+    kind: grype
+    select:
+      kev: true
+    hint: Upgrade the component, or add an OpenVEX statement with status not_affected or fixed and a justification.
+  no-secrets:
+    type: scan-threshold
+    kind: secrets-sarif
+    max-results: 0
+    hint: Remove the secret from the repository history and rotate it.
+  sast-no-high:
+    type: scan-threshold
+    kind: sast-sarif
+    min-security-severity: 7.0
+    max-results: 0
+    hint: Fix or dismiss the high and critical code scanning alerts.
+  sast-present:
+    type: file-present
+    kind: sast-sarif
+  sbom-bsi-fields:
+    type: json-field-required
+    kind: product-sbom
+    profile: bsi-tr03183-2
+    hint: Add the BSI TR-03183-2 fields to the SBOM, or set gate.require-bsi to false in cra.yml.
+  sbom-core-fields:
+    type: json-field-required
+    kind: product-sbom
+    profile: sbom-core
+    hint: Regenerate the SBOM so that every component has a name, a version and a purl.
+  sbom-present:
+    type: file-present
+    kind: product-sbom
+  security-txt-set:
+    type: attested-field
+    field: product.securityTxt
+    hint: Set product.security-txt in cra.yml.
+  support-end-set:
+    type: attested-field
+    field: product.supportEnd
+    hint: Set product.support-end in cra.yml.
+  tests-run:
+    type: file-present
+    kind: test-results
+    hint: Pass the test results with --evidence test-results=<file>.
+requirements:
+  - id: annex-i/part-i/1
+    point: I (1)
+    title: Appropriate level of cybersecurity based on the risks
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 1
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2a
+    point: I (2)(a)
+    title: No known exploitable vulnerabilities at release
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(a)
+    coverage: automated
+    checks: [no-kev-without-vex, no-critical-without-vex]
+  - id: annex-i/part-i/2b
+    point: I (2)(b)
+    title: Secure by default configuration, with reset to the original state
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(b)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2c
+    point: I (2)(c)
+    title: Vulnerabilities addressed through security updates
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(c)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2d
+    point: I (2)(d)
+    title: Protection from unauthorised access
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(d)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2e
+    point: I (2)(e)
+    title: Confidentiality of stored, transmitted or processed data
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(e)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2f
+    point: I (2)(f)
+    title: Integrity of data, commands, programs and configuration
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(f)
+    coverage: partial
+    checks: [distribution-signed]
+  - id: annex-i/part-i/2g
+    point: I (2)(g)
+    title: Data minimisation
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(g)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2h
+    point: I (2)(h)
+    title: Availability of essential and basic functions
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(h)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2i
+    point: I (2)(i)
+    title: Minimal negative impact on other devices and networks
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(i)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2j
+    point: I (2)(j)
+    title: Limited attack surfaces, including external interfaces
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(j)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2k
+    point: I (2)(k)
+    title: Exploitation mitigation mechanisms
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(k)
+    coverage: partial
+    checks: [sast-no-high]
+  - id: annex-i/part-i/2l
+    point: I (2)(l)
+    title: Security logging and monitoring, with an opt-out
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(l)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-i/2m
+    point: I (2)(m)
+    title: Secure removal and transfer of data and settings
+    source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(m)
+    coverage: manual
+    checks: []
+  - id: annex-i/part-ii/1
+    point: II (1)
+    title: Components identified, SBOM in a machine-readable format
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 1
+    coverage: automated
+    checks: [sbom-present, sbom-core-fields]
+  - id: annex-i/part-ii/2
+    point: II (2)
+    title: Vulnerabilities remediated without delay
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 2
+    coverage: partial
+    checks: [no-kev-without-vex, no-critical-without-vex]
+  - id: annex-i/part-ii/3
+    point: II (3)
+    title: Effective and regular security tests and reviews
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 3
+    coverage: automated
+    checks: [tests-run, sast-present]
+  - id: annex-i/part-ii/4
+    point: II (4)
+    title: Public disclosure of fixed vulnerabilities
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 4
+    coverage: manual
+    checks: []
+  - id: annex-i/part-ii/5
+    point: II (5)
+    title: Coordinated vulnerability disclosure policy
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 5
+    coverage: automated
+    checks: [cvd-policy-present, security-txt-set]
+  - id: annex-i/part-ii/6
+    point: II (6)
+    title: Contact address for vulnerability reports
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 6
+    coverage: automated
+    checks: [cvd-contact-set]
+  - id: annex-i/part-ii/7
+    point: II (7)
+    title: Secure distribution of updates
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 7
+    coverage: automated
+    checks: [distribution-signed]
+  - id: annex-i/part-ii/8
+    point: II (8)
+    title: Security updates disseminated without delay and free of charge, with advisories
+    source: Reg. (EU) 2024/2847, Annex I, Part II, point 8
+    coverage: manual
+    checks: []

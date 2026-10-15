@@ -1,0 +1,79 @@
+id: bsi-tr03183-2
+title: BSI TR-03183-2 v2.1.0 required fields
+source: "BSI TR-03183-2 v2.1.0 (2025-08-20), sections 5.2.1 and 5.2.2, CycloneDX mapping in section 8.2"
+fields:
+  - id: sbom-creator
+    ref: "5.2.1"
+    paths:
+      - metadata.manufacturer.contact[*].email
+      - metadata.manufacturer.url[*]
+    require: non-empty
+  - id: timestamp
+    ref: "5.2.1"
+    path: metadata.timestamp
+    require: non-empty
+  - id: component-creator
+    ref: "5.2.2"
+    each: all-components
+    paths:
+      - manufacturer.contact[*].email
+      - manufacturer.url[*]
+    require: non-empty
+  - id: component-name
+    ref: "5.2.2"
+    each: all-components
+    path: name
+    require: non-empty
+  - id: component-version
+    ref: "5.2.2"
+    each: all-components
+    path: version
+    require: non-empty
+  - id: component-filename
+    ref: "5.2.2"
+    each: all-components
+    path: properties[name=bsi:component:filename].value
+    require: non-empty
+  - id: component-licence
+    ref: "5.2.2"
+    each: all-components
+    paths:
+      - licenses[*].license[acknowledgement=concluded]
+      - licenses[acknowledgement=concluded].expression
+    require: present
+  - id: component-hash
+    ref: "5.2.2"
+    each: all-components
+    path: externalReferences[type=distribution].hashes[alg=SHA-512].content
+    require: non-empty
+  - id: component-executable
+    ref: "5.2.2"
+    each: all-components
+    path: properties[name=bsi:component:executable].value
+    require:
+      one-of: [executable, non-executable]
+  - id: component-archive
+    ref: "5.2.2"
+    each: all-components
+    path: properties[name=bsi:component:archive].value
+    require:
+      one-of: [archive, no archive]
+  - id: component-structured
+    ref: "5.2.2"
+    each: all-components
+    path: properties[name=bsi:component:structured].value
+    require:
+      one-of: [structured, unstructured]
+  - id: dependencies
+    ref: "5.2.2"
+    path: dependencies
+    require: non-empty
+  - id: dependency-completeness
+    ref: "5.2.2"
+    path: compositions[*].aggregate
+    require:
+      one-of: [complete, incomplete, unknown]
+  - id: no-vulnerabilities
+    ref: "5.1"
+    path: vulnerabilities
+    require: absent
