@@ -8,7 +8,7 @@ CVD Inbox writes these events to standard output as JSON lines, under the log ca
 |---|---|---|---|
 | 1001 | Information | Operator signed in | operator, client address |
 | 1002 | Warning | Failed sign-in | name if it belongs to an operator, otherwise `(unknown name)`; client address |
-| 1003 | Warning | Sign-in refused, account locked | name if it belongs to an operator, otherwise `(unknown name)`; client address |
+| 1003 | Warning | Sign-in refused, account locked; also logged for the failure that sets the lock | operator, client address |
 | 1004 | Information | Operator signed out | operator |
 | 1005 | Information | Operator created from the command line | operator |
 | 1101 | Information | Report received | report id |
@@ -28,11 +28,11 @@ Two more events come from the retention job, under the log category `CvdInbox.Re
 | 1302 | Erasing expired contacts failed; the next sweep tries again |
 | 1303 | Truncating the write-ahead log failed; the next sweep tries again |
 
-A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. The sign-in events 1002 and 1003 never carry what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
+A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. Event 1002 never carries what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
 
 ## What the events never contain
 
-Report text, contacts, receipt codes, notes and passwords. The client address is not recorded with a report, so researchers can stay anonymous.
+Report text, contacts, receipt codes, notes and passwords. The app does not record the address of a normal submission. Events 1102 and 1103 do carry it, and the access log of your reverse proxy may too.
 
 ## Opting out
 

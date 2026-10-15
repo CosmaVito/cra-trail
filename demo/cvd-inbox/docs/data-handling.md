@@ -35,17 +35,17 @@ SQLite keeps deleted content in free pages and in the write-ahead log unless tol
 - turns on `PRAGMA secure_delete` on every connection, so freed space is overwritten with zeros;
 - truncates the write-ahead log after each deletion (`PRAGMA wal_checkpoint(TRUNCATE)`), and again at the end of every retention sweep, also when the sweep erased nothing.
 
-A reader that is still open can keep the checkpoint from finishing. The app retries a few times, then gives up and logs event 1204 without any report content. The deletion has committed by then, and the next sweep truncates the log again. The truncate belongs to the sweep, so the contacts it erases leave the log within the same sweep.
+A reader that is still open can keep the checkpoint from finishing. The app retries a few times, then gives up and logs event 1204 without any report content. The deletion has committed by then, and the next sweep truncates the log again. The truncate belongs to the sweep, so the contacts it erases leave the log within the same sweep, or the next one if a reader blocks the truncate (event 1204).
 
 The tests read the raw database files after a deletion and after an erasure and check that the text is gone: `Deleting_a_report_leaves_no_trace_in_the_database_files` and `Erased_contacts_leave_no_bytes_in_the_database_files`.
 
 ## Limits
 
 - Backups, volume snapshots and copies made before a deletion keep the old data. Apply the same retention to them.
-- Disks and SSDs can keep old blocks after a file is overwritten. Use an encrypted volume.
+- Disks and SSDs can keep old blocks after a file is overwritten or truncated. Use an encrypted volume.
 - The app does not encrypt the database or the keys. Protect the data volume.
 - There is no export. To move the inbox to another host, stop it and copy the data folder over an encrypted channel.
 
 ## Removing everything
 
-Delete the data folder or the volume; see [operations.md](operations.md#remove-everything).
+Delete the data folder or the volume; see [operations.md](operations.md#remove-everything). Logs already collected by the container runtime or the journal keep operator names and client addresses: rotate or delete them on the same schedule.

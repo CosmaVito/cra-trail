@@ -24,9 +24,11 @@ To use a host folder instead of a named volume, give it to UID 1654 first: `chow
 
 CVD Inbox speaks plain HTTP and expects a reverse proxy to terminate TLS. Operator pages need HTTPS: `POST /api/auth/sign-in` answers 400 when the request is not https and the host is not `localhost`, `127.0.0.1` or `[::1]`. The check runs before the password is looked at, so a password sent over plain http is never verified and never counted as a failed attempt.
 
+The check trusts the `Host` header it receives, and the trusted-proxy setting forwards only `X-Forwarded-For` and `X-Forwarded-Proto`, not `Host`. The proxy must pass the original `Host` header (nginx: `proxy_set_header Host $host;`, Apache: `ProxyPreserveHost On`) and send `X-Forwarded-Proto`. A proxy that sends `Host: 127.0.0.1:8080` (the nginx default with `proxy_pass`, or Apache with `ProxyPreserveHost Off`) makes every request look local. Then the app's check does nothing, and only the browser's secure-context check in the sign-in page stops a plain-http sign-in.
+
 The app learns that a request was https from `X-Forwarded-Proto`, and the real client address from `X-Forwarded-For`. It reads both only from the proxies listed in `Inbox__TrustedProxies__0`, `__1`, and so on, which must be IP addresses. One proxy hop is supported: list parallel proxies, not a chain. The proxy must send both headers.
 
-Without a trusted proxy the headers are ignored: operators cannot sign in over https, and every client behind the proxy shares one rate limit window. Use the client address in the security events to check that the app sees the right address; in Docker it is the address of the proxy as the container sees it, which is not always the one you configured on the host.
+Without a trusted proxy the headers are ignored: the app sees plain http, so it refuses sign-in for any host other than `localhost`, `127.0.0.1` and `[::1]`, and every client behind the proxy shares one rate limit window. Until the proxy is trusted, the client address in events such as 1103 is the proxy's address as the app sees it: list that one. In Docker it is usually the network's gateway, not 127.0.0.1.
 
 Do not set `ASPNETCORE_FORWARDEDHEADERS_ENABLED`. It adds a second forwarded-headers middleware that trusts these headers from any sender and bypasses the list.
 
@@ -38,7 +40,7 @@ There is no default account and no setup page. Create operators on the server:
 ./cvd-inbox create-operator <name> [--password-stdin]
 ```
 
-Names have 2 to 32 lower-case letters, digits, `.`, `_` or `-`. Passwords need 15 to 128 characters. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. Exit codes: 0 created, 1 refused, 2 wrong usage.
+Names have 2 to 32 characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. Exit codes: 0 created, 1 refused, 2 wrong usage.
 
 ## Upgrade
 
@@ -50,7 +52,7 @@ Stop the service and copy the data folder: `cvd-inbox.db`, `cvd-inbox.db-wal` if
 
 ## Remove everything
 
-Stop the service and delete the data folder, or the volume (`docker volume rm cvd-inbox-data`). This removes every report, contact, note, operator and key.
+Stop the service and delete the data folder, or the volume (`docker volume rm cvd-inbox-data`). This removes every report, contact, note, operator and key. Logs already collected by the container runtime or the journal keep operator names and client addresses: rotate or delete them on the same schedule.
 
 ## Secure defaults
 
@@ -58,11 +60,11 @@ Annex I, Part I, point 2(b) of the Cyber Resilience Act asks for a secure defaul
 
 - There is no default account and no setup page. The first operator is created from the server's command line.
 - The app does not start without an https public origin and a security.txt expiry date in the future.
-- Every cookie the app sets carries `Secure`, through a cookie policy that runs before everything else. Over plain http to a host other than `localhost`, browsers drop them, and the sign-in is refused anyway.
-- The session cookie `__Host-cvd-session` is `Secure`, `HttpOnly` and `SameSite=Strict`, with no persistent expiry and a one-hour sliding timeout. The request token cookie `XSRF-TOKEN` is readable by the client script, as it has to be, and is `Secure` and `SameSite=Strict`.
+- Every cookie the app sets carries `Secure`, through a cookie policy that runs early in the pipeline, after the trusted-proxy middleware. Over plain http to a host other than `localhost`, browsers drop them, and the sign-in is refused anyway.
+- The session cookie `__Host-cvd-session` is `Secure`, `HttpOnly` and `SameSite=Strict`, with no persistent expiry and a one-hour sliding timeout. The request token cookie `XSRF-TOKEN` is readable by the client script, as it has to be, and is `Secure` and `SameSite=Strict`. The antiforgery cookie `__Host-cvd-antiforgery` is `Secure`, `HttpOnly` and `SameSite=Strict`.
 - Every change made by an operator, and the sign-in itself, needs the request token in the `X-XSRF-TOKEN` header.
 - Passwords are stored as PBKDF2-HMAC-SHA512 hashes with 100,000 iterations.
-- A wrong password, an unknown name and a locked account get the same answer: 401 with "Wrong name or password." Five wrong passwords lock the account for 15 minutes. Failures are counted in the database in one statement, so parallel guesses cannot slip past the count.
+- A wrong password, an unknown name and a locked account get the same answer: 401 with "Wrong name or password." Five wrong passwords lock the account for 15 minutes. Every failure is counted in the database in one statement, so none is lost under parallel attempts; the sign-in rate limit bounds the guesses already in flight.
 - Reports, status lookups and sign-ins are rate limited per client address.
 - The Content Security Policy allows scripts from the app only and sets `frame-ancestors 'none'`; responses also send `nosniff`, `X-Frame-Options: DENY` and no referrer, and API responses are not cached.
 - Request bodies over 128 KiB are refused.
@@ -75,7 +77,7 @@ Annex I, Part I, point 2(j):
 - One HTTP port (8080 in the image). No other listener, no outbound connections, no email.
 - A non-root user. The image has no shell, and the app needs no capabilities and no writable root file system.
 - `DOTNET_EnableDiagnostics=0` in the image: no debugger, profiler or EventPipe endpoints.
-- Writes only to the data folder, which is created with mode 0700 on Linux, and to `TMPDIR`, which is on the same volume.
+- Writes only to the data folder, which is created with mode 0700 on Linux, and to `TMPDIR`. In the image that is on the same volume; the zip install uses the system temp directory.
 - No runtime dependency on other services: SQLite runs inside the process.
 
-`scripts/container-smoke.sh` checks the image for these points.
+`scripts/container-smoke.sh` checks part of this: a numeric non-root user, only port 8080 exposed, no shell, a run with `--read-only --cap-drop=ALL`, database, keys and temp files landing in the volume, and the operator surviving a container recreate. It does not check `DOTNET_EnableDiagnostics`, outbound connections, the 0700 mode or other listeners.

@@ -24,7 +24,7 @@ docker run -d --name cvd-inbox --read-only --cap-drop=ALL --security-opt=no-new-
   cvd-inbox:0.1.0
 ```
 
-Operator pages need HTTPS: the sign-in is refused with a 400 over plain http, unless the host is `localhost`, `127.0.0.1` or `[::1]`. Put a reverse proxy with TLS in front of the app and list it in `Inbox__TrustedProxies__0`, so the app accepts its `X-Forwarded-Proto` header. Every cookie the app sets is `Secure`.
+Operator pages need HTTPS: the sign-in is refused with a 400 over plain http, unless the host is `localhost`, `127.0.0.1` or `[::1]`. Put a reverse proxy with TLS in front of the app and list it in `Inbox__TrustedProxies__0`, so the app accepts its `X-Forwarded-Proto` header. The proxy must also pass the original `Host` header (nginx: `proxy_set_header Host $host;`, Apache: `ProxyPreserveHost On`). If it sends `Host: 127.0.0.1:8080` instead, the app takes every request for a local one and its own check does nothing; only the browser check in the sign-in page then stops a plain-http sign-in. Every cookie the app sets is `Secure`.
 
 A host folder mounted on `/home/app` must be owned by UID 1654, the user of the image.
 
