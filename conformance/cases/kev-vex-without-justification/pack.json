@@ -1,0 +1,13 @@
+{
+  "createdAt": "2026-10-15T00:00:00Z",
+  "signing": { "method": "github-artifact-attestations", "signerWorkflow": "CosmaVito/cra-trail/.github/workflows/release.yml" },
+  "files": [
+    { "path": "product.json", "kind": "product", "source": "../../shared/product-clean.json" },
+    { "path": "sbom/product.cdx.json", "kind": "product-sbom", "source": "../../shared/sbom-clean.cdx.json" },
+    { "path": "scans/grype.json", "kind": "grype", "source": "../../shared/grype-kev.json" },
+    { "path": "scans/secrets.sarif", "kind": "secrets-sarif", "source": "../../shared/secrets-clean.sarif" },
+    { "path": "scans/codeql.sarif", "kind": "sast-sarif", "source": "../../shared/sast-clean.sarif" },
+    { "path": "vex/product.openvex.json", "kind": "vex", "source": "../../shared/vex-kev-no-justification.openvex.json" },
+    { "path": "attested/docs/risk-assessment.md", "kind": "attested-document", "source": "../../shared/risk-assessment.md" }
+  ]
+}

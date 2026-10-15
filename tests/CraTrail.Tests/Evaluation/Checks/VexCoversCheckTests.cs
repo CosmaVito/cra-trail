@@ -91,6 +91,27 @@ public class VexCoversCheckTests
         Assert.Equal(new[] { "invalid evidence: scans/grype.json" }, outcome.Details);
     }
 
+    [Fact]
+    public void Findings_that_grype_ignored_still_need_a_statement_in_the_pack()
+    {
+        var outcome = Evaluate(NoKev, Report("grype-kev-ignored.json"));
+        Assert.Equal(Statuses.Fail, outcome.Status);
+        Assert.Equal(new[] { Log4j }, outcome.Details);
+
+        var covered = Report("grype-kev-ignored.json").AddShared("vex/product.openvex.json", EvidenceKinds.Vex, "vex-kev-alias.openvex.json");
+        Assert.Equal(Statuses.Pass, Evaluate(NoKev, covered).Status);
+    }
+
+    [Fact]
+    public void Not_affected_needs_a_justification_or_an_impact_statement()
+    {
+        var bare = Vex("""[ { "vulnerability": { "name": "CVE-2021-44228" }, "status": "not_affected" } ]""");
+        Assert.Equal(Statuses.Fail, Evaluate(NoKev, Report("grype-kev.json").Add("vex/product.openvex.json", EvidenceKinds.Vex, bare)).Status);
+
+        var explained = Vex("""[ { "vulnerability": { "name": "CVE-2021-44228" }, "status": "not_affected", "impact_statement": "The lookup class is removed." } ]""");
+        Assert.Equal(Statuses.Pass, Evaluate(NoKev, Report("grype-kev.json").Add("vex/product.openvex.json", EvidenceKinds.Vex, explained)).Status);
+    }
+
     private static TestPackBuilder Report(string name) =>
         new TestPackBuilder().AddShared("scans/grype.json", EvidenceKinds.Grype, name);
 

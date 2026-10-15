@@ -23,7 +23,9 @@ public sealed class VexCoversCheck : ICheck
         List<string> uncovered;
         try
         {
-            uncovered = [.. context.Findings
+            // Grype moves matches to ignoredMatches for --only-fixed, ignore rules and its own --vex.
+            // Only the statements inside the pack can waive a finding.
+            uncovered = [.. context.Findings.Concat(context.IgnoredFindings)
                 .Where(f => (!kevOnly || f.Kev) && (minCvss is null || f.EffectiveScore >= minCvss))
                 .Where(f => !IsCovered(context.Vex.Resolve(f.Ids, f.Purl)))
                 .Select(f => f.Purl is null ? $"{f.Id} {f.Name}@{f.Version}" : $"{f.Id} {f.Purl}")];
@@ -36,5 +38,11 @@ public sealed class VexCoversCheck : ICheck
         return uncovered.Count > 0 ? CheckOutcome.Fail(check, uncovered) : CheckOutcome.Pass(check);
     }
 
-    private static bool IsCovered(VexStatement? statement) => statement?.Status is "not_affected" or "fixed";
+    // OpenVEX requires a justification or an impact statement on not_affected.
+    private static bool IsCovered(VexStatement? statement) => statement switch
+    {
+        { Status: "fixed" } => true,
+        { Status: "not_affected" } => !string.IsNullOrWhiteSpace(statement.Justification) || !string.IsNullOrWhiteSpace(statement.ImpactStatement),
+        _ => false,
+    };
 }

@@ -16,7 +16,7 @@ public class ConformanceTests
     }
 
     [Fact]
-    public void There_are_ten_cases() => Assert.Equal(10, Directory.GetDirectories(TestPaths.Conformance("cases")).Length);
+    public void There_are_twelve_cases() => Assert.Equal(12, Directory.GetDirectories(TestPaths.Conformance("cases")).Length);
 
     [Theory]
     [MemberData(nameof(Cases))]

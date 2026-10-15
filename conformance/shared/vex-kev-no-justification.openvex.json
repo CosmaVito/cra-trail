@@ -1,0 +1,14 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://example.org/vex/cvd-inbox-1",
+  "author": "CVD Inbox maintainers",
+  "timestamp": "2026-10-10T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2021-44228" },
+      "products": [ { "@id": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?type=jar" } ],
+      "status": "not_affected"
+    }
+  ]
+}
