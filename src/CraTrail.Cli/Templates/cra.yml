@@ -3,11 +3,12 @@
 product:
   name: Example Product
   purl: pkg:github/owner/repository
-  # Last day of the support period (CRA Art. 13(8)).
-  support-end: 2031-12-31
-  # Where security researchers report vulnerabilities.
-  cvd-contact: security@example.org
-  security-txt: https://example.org/.well-known/security.txt
+  # Last day of the support period (CRA Art. 13(8)), as YYYY-MM-DD. The gate blocks until it is set.
+  support-end:
+  # Where security researchers report vulnerabilities, for example security@your-domain. The gate blocks until it is set.
+  cvd-contact:
+  # https URL of your security.txt (RFC 9116).
+  security-txt:
 
 # Annex I points covered by a document in this repository, for example:
 #   annex-i/part-i/1: docs/risk-assessment.md

@@ -15,6 +15,12 @@ mkdir -p "$work/repo"
 cd "$work/repo"
 "$cra" --version
 "$cra" init
+cat > cra.yml <<'YAML'
+product:
+  name: Smoke Test
+  support-end: 2031-12-31
+  cvd-contact: security@example.org
+YAML
 "$cra" pack \
   --product-sbom "$shared/sbom-clean.cdx.json" \
   --grype "$shared/grype-clean.json" \

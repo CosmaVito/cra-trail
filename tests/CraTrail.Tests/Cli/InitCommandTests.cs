@@ -36,10 +36,12 @@ public class InitCommandTests
     }
 
     [Fact]
-    public void The_template_configuration_loads_with_the_default_rules()
+    public void The_template_loads_and_leaves_the_gate_fields_to_the_user()
     {
         var config = CraConfigLoader.Load(Templates.Read("cra.yml"), "1.0.0", DefaultRules.Load(), _ => true);
-        Assert.Equal("2031-12-31", config.Product.SupportEnd);
+        Assert.Null(config.Product.SupportEnd);
+        Assert.Null(config.Product.CvdContact);
+        Assert.Null(config.Product.SecurityTxt);
         Assert.Empty(config.Product.GateExclude);
     }
 
