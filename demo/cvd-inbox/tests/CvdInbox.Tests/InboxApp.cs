@@ -20,6 +20,9 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         settings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["Inbox:DataPath"] = DataDirectory,
+            ["Disclosure:PublicOrigin"] = "https://inbox.example.test",
+            ["Disclosure:Contact:0"] = "mailto:security@example.test",
+            ["Disclosure:Expires"] = "2027-06-30T00:00:00Z",
         };
         foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
             settings[key] = value;
