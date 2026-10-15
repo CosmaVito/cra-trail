@@ -1,6 +1,8 @@
+using CvdInbox.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
@@ -30,6 +32,22 @@ public sealed class InboxApp : WebApplicationFactory<Program>
     public HttpClient CreateBrowser() =>
         CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
 
+    public async Task<T> InScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider);
+    }
+
+    public Task<T> WithDbAsync<T>(Func<InboxDb, Task<T>> action) =>
+        InScopeAsync(services => action(services.GetRequiredService<InboxDb>()));
+
+    public Task<int> AddReportAsync(Report report) => WithDbAsync(async db =>
+    {
+        db.Reports.Add(report);
+        await db.SaveChangesAsync();
+        return report.Id;
+    });
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
@@ -41,6 +59,8 @@ public sealed class InboxApp : WebApplicationFactory<Program>
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
+        // Pooled connections keep the files open on Windows.
+        SqliteConnection.ClearAllPools();
         Directory.Delete(DataDirectory, recursive: true);
     }
 }

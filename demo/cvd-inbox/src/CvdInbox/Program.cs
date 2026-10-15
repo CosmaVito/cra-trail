@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CvdInbox;
+using CvdInbox.Data;
 using CvdInbox.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +13,11 @@ builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(json =>
     json.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services.AddInboxOptions();
+builder.Services.AddInboxData();
 
 await using var app = builder.Build();
+
+await app.Services.PrepareDatabaseAsync();
 
 app.UseExceptionHandler();
 app.UseSecurityHeaders();

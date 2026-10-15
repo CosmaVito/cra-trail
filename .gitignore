@@ -10,4 +10,4 @@ dist/
 test-results/
 playwright-report/
 demo/cvd-inbox/src/CvdInbox/wwwroot/
-demo/cvd-inbox/src/CvdInbox/data/
+demo/cvd-inbox/src/CvdInbox/data/*.db*
