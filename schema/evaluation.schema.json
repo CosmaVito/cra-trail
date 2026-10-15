@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cosmavito.github.io/cra-trail/schema/evaluation.schema.json",
+  "title": "cra-trail evaluation result (evaluation.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rulesVersion", "checks", "requirements", "gate", "totals"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "rulesVersion": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "status", "details"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["file-present", "json-field-required", "scan-threshold", "vex-covers", "attested-field"] },
+          "status": { "enum": ["pass", "fail", "missing"] },
+          "details": { "$ref": "#/$defs/texts" }
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "point", "title", "coverage", "status", "checks", "attestation", "reason", "details"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9/-]+$" },
+          "point": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "coverage": { "enum": ["automated", "partial", "manual"] },
+          "status": { "enum": ["pass", "fail", "missing", "attested", "not-applicable"] },
+          "checks": { "$ref": "#/$defs/texts" },
+          "attestation": { "type": ["string", "null"] },
+          "reason": { "type": ["string", "null"] },
+          "details": { "$ref": "#/$defs/texts" }
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "required", "blocking"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "required": { "$ref": "#/$defs/texts" },
+        "blocking": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check", "status", "details", "hint"],
+            "properties": {
+              "check": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["fail", "missing"] },
+              "details": { "$ref": "#/$defs/texts" },
+              "hint": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "attested", "missing", "notApplicable"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "attested": { "type": "integer", "minimum": 0 },
+        "missing": { "type": "integer", "minimum": 0 },
+        "notApplicable": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "texts": { "type": "array", "items": { "type": "string" } }
+  }
+}
