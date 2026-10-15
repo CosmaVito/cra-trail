@@ -37,36 +37,42 @@ start() {
   fail "the app did not answer on port $port"
 }
 
-user="$(docker image inspect "$image" --format '{{.Config.User}}')"
-case "$user" in
-  "" | 0 | root | 0:0) fail "the image runs as root (User='$user')" ;;
-esac
+user="$(docker image inspect "$image" --format '{{.Config.User}}')" || fail "cannot inspect image $image"
+[[ "$user" =~ ^[1-9][0-9]*(:[0-9]+)?$ ]] || fail "the image does not run as a numeric non-root user (User='$user')"
 
-ports="$(docker image inspect "$image" --format '{{json .Config.ExposedPorts}}')"
+ports="$(docker image inspect "$image" --format '{{json .Config.ExposedPorts}}')" || fail "cannot inspect image $image"
 [ "$ports" = '{"8080/tcp":{}}' ] || fail "unexpected exposed ports: $ports"
 
 start
 # No "-o /dev/null": with MSYS_NO_PATHCONV a Windows curl cannot write to it. Read the last line instead.
-content_type="$(curl -fsS -w '\n%{content_type}' "http://127.0.0.1:$port/.well-known/security.txt" | tail -n 1)"
+content_type="$(curl -fsS -w '\n%{content_type}' "http://127.0.0.1:$port/.well-known/security.txt" | tail -n 1)" \
+  || fail "security.txt request failed"
 [ "$content_type" = "text/plain; charset=utf-8" ] || fail "security.txt has content type '$content_type'"
 
 # The session call writes the first data protection key; it must land in the volume.
-curl -fsS "http://127.0.0.1:$port/api/auth/session" >/dev/null
+curl -fsS "http://127.0.0.1:$port/api/auth/session" >/dev/null || fail "GET /api/auth/session failed"
 printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin >/dev/null \
   || fail "create-operator failed"
 
-files="$(docker cp "$name:/home/app/data" - | tar -t)"
+files="$(docker cp "$name:/home/app/data" - | tar -t)" || fail "cannot read /home/app/data from the container"
 grep -q 'data/cvd-inbox.db$' <<<"$files" || fail "no database in the data volume"
 grep -q 'data/keys/key-.*\.xml$' <<<"$files" || fail "no data protection key in the data volume"
 
+# TMPDIR is on the volume: nothing may be left at its root outside data/ (the first path part is the tar prefix).
+volume_files="$(docker cp "$name:/home/app" - | tar -t)" || fail "cannot read /home/app from the container"
+stray="$(grep -Ev '^[^/]+/$|^[^/]+/data(/|$)' <<<"$volume_files" || true)"
+[ -z "$stray" ] || fail "files outside data/ in the volume: $stray"
+
+[ "$(docker inspect -f '{{.State.Running}}' "$name")" = "true" ] || fail "the container is not running"
 if docker exec "$name" sh -c true >/dev/null 2>&1; then
   fail "the image has a shell"
 fi
 
 docker rm -f "$name" >/dev/null
 start
-if printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin >/dev/null 2>&1; then
-  fail "the operator did not survive a restart"
+if second="$(printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin 2>&1)"; then
+  fail "the operator did not survive a restart: create-operator succeeded again"
 fi
+grep -q 'already exists' <<<"$second" || fail "the second create-operator failed for another reason: $second"
 
 echo "container smoke test passed"
