@@ -1,0 +1,45 @@
+<h1>Inbox</h1>
+
+<div class="field">
+  <label for="status-filter">Show</label>
+  <select id="status-filter" #statusFilter (change)="changeFilter(statusFilter.value)">
+    <option value="">All reports</option>
+    @for (status of statuses; track status) {
+      <option [value]="status">{{ labels[status] }}</option>
+    }
+  </select>
+</div>
+
+@if (failure()) {
+  <p class="alert" role="alert">{{ failure() }}</p>
+} @else {
+  @if (reports(); as list) {
+    @if (list.length === 0) {
+    <p class="empty">No reports.</p>
+    } @else {
+    <table>
+      <caption class="visually-hidden">Reports, newest first</caption>
+      <thead>
+        <tr>
+          <th scope="col">Received</th>
+          <th scope="col">Product</th>
+          <th scope="col">Version</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (report of list; track report.id) {
+          <tr>
+            <td>{{ report.receivedAt | date: 'd MMM y, HH:mm' }}</td>
+            <td><a [routerLink]="['/operator/reports', report.id]">{{ report.product }}</a></td>
+            <td>{{ report.version }}</td>
+            <td>{{ labels[report.status] }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    }
+  } @else {
+    <p>Loading the inbox…</p>
+  }
+}

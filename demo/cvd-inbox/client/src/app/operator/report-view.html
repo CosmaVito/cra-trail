@@ -1,0 +1,84 @@
+<p><a routerLink="/operator">Back to the inbox</a></p>
+
+@if (failure()) {
+  <p class="alert" role="alert">{{ failure() }}</p>
+}
+
+@if (report(); as r) {
+  <h1>{{ r.product }} {{ r.version }}</h1>
+  <dl class="facts">
+    <dt>Status</dt>
+    <dd data-testid="report-status">{{ labels[r.status] }}</dd>
+    <dt>Received</dt>
+    <dd>{{ r.receivedAt | date: 'd MMM y, HH:mm' }}</dd>
+    <dt>Contact</dt>
+    <dd data-testid="contact">
+      @if (r.contact) {
+        {{ r.contact }}
+      } @else if (r.contactErasedAt) {
+        Erased on {{ r.contactErasedAt | date: 'd MMM y' }}
+      } @else {
+        Not given
+      }
+    </dd>
+  </dl>
+
+  <h2>Description</h2>
+  <pre class="description" data-testid="description">{{ r.description }}</pre>
+
+  <h2 id="status-heading">Status</h2>
+  @if (r.nextStatuses.length) {
+    <div class="actions" role="group" aria-labelledby="status-heading" #actions
+         [attr.aria-describedby]="statusError() ? 'status-error' : null">
+      @for (next of r.nextStatuses; track next) {
+        <button type="button" (click)="move(next)">Move to {{ labels[next] }}</button>
+      }
+    </div>
+    @if (statusError()) {
+      <p class="error" id="status-error">{{ statusError() }}</p>
+    }
+  } @else {
+    <p>This report is closed for good.</p>
+  }
+
+  <h2>Internal notes</h2>
+  @if (r.notes.length) {
+    <ul class="notes">
+      @for (note of r.notes; track note.id) {
+        <li>
+          <p class="hint">{{ note.author }}, {{ note.createdAt | date: 'd MMM y, HH:mm' }}</p>
+          <p class="note-text">{{ note.text }}</p>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p>No notes yet.</p>
+  }
+  <form [formRoot]="noteForm">
+    <div class="field">
+      @let noteError = visibleError(noteForm.text());
+      <label for="note">New note</label>
+      <p class="hint" id="note-hint">Only operators see notes.</p>
+      <textarea id="note" aria-required="true" [formField]="noteForm.text"
+                [attr.aria-invalid]="noteError ? 'true' : null"
+                [attr.aria-describedby]="noteError ? 'note-hint note-error' : 'note-hint'"></textarea>
+      @if (noteError) {
+        <p class="error" id="note-error">{{ noteError }}</p>
+      }
+    </div>
+    <button type="submit" [disabled]="noteForm().submitting()">Add note</button>
+  </form>
+
+  <h2>Delete</h2>
+  @if (confirmingDelete()) {
+    <div class="alert" role="group" aria-labelledby="delete-warning">
+      <p id="delete-warning">This erases the report, its contact details and its notes. It cannot be undone.</p>
+      <div class="actions">
+        <button type="button" class="danger" (click)="remove()">Delete for good</button>
+        <button type="button" class="secondary" (click)="confirmingDelete.set(false)">Cancel</button>
+      </div>
+    </div>
+  } @else {
+    <button type="button" class="danger" (click)="confirmingDelete.set(true)">Delete report</button>
+  }
+}

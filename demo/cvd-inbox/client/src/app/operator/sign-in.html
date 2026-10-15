@@ -1,0 +1,39 @@
+<h1>Operator sign-in</h1>
+
+@if (insecure) {
+  <p class="alert" role="alert">Operator sign-in needs HTTPS.</p>
+  <p>Open this page over HTTPS, or from localhost on the machine that runs the server.</p>
+} @else {
+  @if (failure()) {
+    <p class="alert" role="alert">{{ failure() }}</p>
+  }
+
+  <form [formRoot]="signInForm">
+    <div class="field">
+      @let nameError = visibleError(signInForm.name());
+      <label for="name">Name</label>
+      <input id="name" [formField]="signInForm.name" autocomplete="username" aria-required="true"
+             [attr.aria-invalid]="nameError ? 'true' : null"
+             [attr.aria-describedby]="nameError ? 'name-error' : null" />
+      @if (nameError) {
+        <p class="error" id="name-error">{{ nameError }}</p>
+      }
+    </div>
+    <div class="field">
+      @let passwordError = visibleError(signInForm.password());
+      <label for="password">Password</label>
+      <input id="password" type="password" [formField]="signInForm.password" autocomplete="current-password" aria-required="true"
+             [attr.aria-invalid]="passwordError ? 'true' : null"
+             [attr.aria-describedby]="passwordError ? 'password-error' : null" />
+      @if (passwordError) {
+        <p class="error" id="password-error">{{ passwordError }}</p>
+      }
+    </div>
+    <button type="submit" [disabled]="signInForm().submitting()">Sign in</button>
+  </form>
+
+  <p class="hint">
+    There is no sign-up page. An administrator creates operators on the server with
+    <code>cvd-inbox create-operator</code>.
+  </p>
+}
