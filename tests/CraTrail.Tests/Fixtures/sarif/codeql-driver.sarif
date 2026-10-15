@@ -1,0 +1,25 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "CodeQL",
+          "organization": "GitHub",
+          "semanticVersion": "2.27.1",
+          "rules": [
+            { "id": "js/path-injection", "defaultConfiguration": { "enabled": true, "level": "error" }, "properties": { "kind": "path-problem", "precision": "high", "problem.severity": "error", "security-severity": "7.5", "tags": [ "security", "external/cwe/cwe-022" ] } },
+            { "id": "js/missing-rate-limiting", "defaultConfiguration": { "enabled": true, "level": "warning" }, "properties": { "kind": "problem", "precision": "high", "security-severity": "5.0", "tags": [ "security" ] } }
+          ]
+        }
+      },
+      "results": [
+        { "ruleId": "js/path-injection", "ruleIndex": 0, "rule": { "id": "js/path-injection", "index": 0 }, "message": { "text": "This path depends on a user-provided value." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "src/routes/docs.ts", "uriBaseId": "%SRCROOT%", "index": 0 }, "region": { "startLine": 41, "startColumn": 15, "endColumn": 56 } } } ] },
+        { "ruleId": "js/missing-rate-limiting", "ruleIndex": 1, "rule": { "id": "js/missing-rate-limiting", "index": 1 }, "message": { "text": "This route handler is not rate-limited." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "src/server.ts", "uriBaseId": "%SRCROOT%", "index": 1 }, "region": { "startLine": 12 } } } ] }
+      ]
+    }
+  ]
+}

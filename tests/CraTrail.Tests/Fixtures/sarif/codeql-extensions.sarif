@@ -1,0 +1,19 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": { "name": "CodeQL", "semanticVersion": "2.27.2" },
+        "extensions": [
+          { "name": "codeql/csharp-queries", "rules": [
+            { "id": "cs/sql-injection", "defaultConfiguration": { "level": "error" }, "properties": { "security-severity": "8.8", "tags": [ "security" ] } }
+          ] }
+        ]
+      },
+      "results": [
+        { "ruleId": "cs/sql-injection", "rule": { "id": "cs/sql-injection", "index": 0, "toolComponent": { "index": 0 } }, "message": { "text": "This query depends on a user-provided value." },
+          "locations": [ { "physicalLocation": { "artifactLocation": { "uri": "src/Data/Reports.cs" }, "region": { "startLine": 57 } } } ] }
+      ]
+    }
+  ]
+}
