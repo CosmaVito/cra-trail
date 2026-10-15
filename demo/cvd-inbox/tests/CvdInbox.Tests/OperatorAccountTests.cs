@@ -85,4 +85,16 @@ public class OperatorAccountTests
         Assert.Equal(new PasswordCheck(SignInOutcome.Failed, null), await app.CheckPasswordAsync("nobody", InboxApp.AlicePassword));
         Assert.Equal(new PasswordCheck(SignInOutcome.Failed, null), await app.CheckPasswordAsync("alice", WrongPassword));
     }
+
+    [Fact]
+    public async Task Parallel_wrong_passwords_still_lock_the_account()
+    {
+        await using var app = new InboxApp();
+        await app.CreateOperatorAsync();
+
+        // Task.Run: the SQLite calls and the hash complete synchronously, so a bare WhenAll would run them one by one.
+        await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => Task.Run(() => app.CheckPasswordAsync("alice", WrongPassword))));
+
+        Assert.Equal(SignInOutcome.LockedOut, (await app.CheckPasswordAsync("alice", InboxApp.AlicePassword)).Outcome);
+    }
 }

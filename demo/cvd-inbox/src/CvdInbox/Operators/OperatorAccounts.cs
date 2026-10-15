@@ -76,14 +76,15 @@ public sealed partial class OperatorAccounts(InboxDb db, IPasswordHasher<Operato
         var result = hasher.VerifyHashedPassword(account, account.PasswordHash, password ?? "");
         if (result == PasswordVerificationResult.Failed)
         {
-            account.FailedSignIns++;
-            var lockedOut = account.FailedSignIns >= MaxFailedSignIns;
-            if (lockedOut)
-            {
-                account.FailedSignIns = 0;
-                account.LockedUntil = now + LockoutDuration;
-            }
-            await db.SaveChangesAsync(cancellationToken);
+            // Counted in SQL: parallel guesses each load the same row while the hash runs, so a read-then-write would lose counts.
+            var accountId = account.Id;
+            await db.Operators.Where(o => o.Id == accountId)
+                .ExecuteUpdateAsync(set => set.SetProperty(o => o.FailedSignIns, o => o.FailedSignIns + 1), cancellationToken);
+            var lockedUntil = now + LockoutDuration;
+            var lockedOut = await db.Operators.Where(o => o.Id == accountId && o.FailedSignIns >= MaxFailedSignIns)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(o => o.FailedSignIns, 0)
+                    .SetProperty(o => o.LockedUntil, lockedUntil), cancellationToken) > 0;
             return new(lockedOut ? SignInOutcome.LockedOut : SignInOutcome.Failed, null);
         }
 
