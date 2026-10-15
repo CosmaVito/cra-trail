@@ -25,6 +25,7 @@ builder.Services.AddDisclosure();
 builder.Services.AddSingleton<SecurityEvents>();
 builder.Services.AddInboxRateLimits();
 builder.Services.AddOperators();
+builder.Services.AddOperatorSignIn();
 
 // Not "await using": RunAsync disposes the app. A failure before RunAsync, such as invalid Inbox settings, must leave
 // the host undisposed, because WebApplicationFactory still waits on it from another thread to report that failure.
@@ -39,15 +40,19 @@ if (runCommand)
 await app.Services.PrepareDatabaseAsync();
 
 app.UseTrustedProxies();
+app.UseCookiePolicy(new CookiePolicyOptions { Secure = CookieSecurePolicy.Always });
 app.UseExceptionHandler();
 app.UseSecurityHeaders();
 app.UseBodySizeLimit();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapDisclosure();
 app.MapReports();
+app.MapAuth();
 app.Map("/api/{**path}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found."));
 app.MapFallbackToFile("index.html");
 

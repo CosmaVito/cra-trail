@@ -58,6 +58,13 @@ public sealed partial class OperatorAccounts(InboxDb db, IPasswordHasher<Operato
         return new(normalized, null);
     }
 
+    // The normalized name when an operator has it, otherwise null.
+    public async Task<string?> ExistingNameAsync(string? name, CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeName(name);
+        return normalized is not null && await db.Operators.AnyAsync(o => o.Name == normalized, cancellationToken) ? normalized : null;
+    }
+
     public async Task<PasswordCheck> CheckPasswordAsync(string? name, string? password, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow().UtcDateTime;

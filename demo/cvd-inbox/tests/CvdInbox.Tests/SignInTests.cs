@@ -1,0 +1,159 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using CvdInbox.Operators;
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace CvdInbox.Tests;
+
+public class SignInTests
+{
+    private const string WrongPassword = "wrong password, long enough";
+
+    [Fact]
+    public async Task Signing_in_sets_a_host_only_secure_strict_session_cookie()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser();
+        await Browser.RefreshTokenAsync(client);
+
+        var response = await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var cookie = response.Headers.GetValues("Set-Cookie")
+            .Single(c => c.StartsWith(OperatorSignIn.SessionCookie + "=", StringComparison.Ordinal))
+            .ToLowerInvariant();
+        Assert.Contains("; secure", cookie, StringComparison.Ordinal);
+        Assert.Contains("; httponly", cookie, StringComparison.Ordinal);
+        Assert.Contains("; samesite=strict", cookie, StringComparison.Ordinal);
+        Assert.Contains("; path=/", cookie, StringComparison.Ordinal);
+        Assert.DoesNotContain("domain=", cookie, StringComparison.Ordinal);
+        Assert.DoesNotContain("expires=", cookie, StringComparison.Ordinal);
+        var session = await client.GetFromJsonAsync<SessionView>("/api/auth/session", TestJson.Options, TestContext.Current.CancellationToken);
+        Assert.Equal("alice", session!.Operator);
+        var signedIn = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1001);
+        Assert.Contains("alice", signedIn.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Cookies_are_secure_even_over_plain_http()
+    {
+        await using var app = App();
+        var client = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost"), AllowAutoRedirect = false });
+
+        var response = await client.GetAsync("/api/auth/session", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var cookies = response.Headers.GetValues("Set-Cookie").Select(c => c.ToLowerInvariant()).ToList();
+        Assert.Equal(
+            new[] { OperatorSignIn.AntiforgeryCookie.ToLowerInvariant(), OperatorSignIn.TokenCookie.ToLowerInvariant() },
+            cookies.Select(c => c[..c.IndexOf('=', StringComparison.Ordinal)]).Order(StringComparer.Ordinal).ToArray());
+        Assert.All(cookies, cookie => Assert.Contains("; secure", cookie, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Signing_in_needs_the_request_token()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+
+        var response = await app.CreateBrowser(peer: "198.51.100.4")
+            .PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var rejected = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1104);
+        Assert.Contains("198.51.100.4", rejected.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_token_from_before_sign_in_stops_working_after_it()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser();
+        await Browser.RefreshTokenAsync(client);
+        await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+
+        await Browser.RefreshTokenAsync(client);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Unknown_names_wrong_passwords_and_locked_accounts_get_the_same_answer()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser();
+        await Browser.RefreshTokenAsync(client);
+
+        var unknown = await SignInAsync(client, "nobody", InboxApp.AlicePassword);
+        var wrong = await SignInAsync(client, "alice", WrongPassword);
+        for (var attempt = 0; attempt < 4; attempt++)
+            await SignInAsync(client, "alice", WrongPassword);
+        var locked = await SignInAsync(client, "alice", InboxApp.AlicePassword);
+
+        Assert.All(new[] { unknown, wrong, locked }, answer =>
+            Assert.Equal((HttpStatusCode.Unauthorized, "Wrong name or password."), answer));
+        Assert.Contains(app.SecurityEvents(), e => e.Id.Id == 1003);
+    }
+
+    [Fact]
+    public async Task Failed_sign_ins_are_recorded_without_the_password()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser(peer: "198.51.100.5");
+        await Browser.RefreshTokenAsync(client);
+
+        await SignInAsync(client, "alice", "my secret guess, long");
+        // Shaped like a name, so only the lookup of existing operators keeps it out of the log.
+        await SignInAsync(client, "my.secret.typed.as.a.name", "x");
+
+        var failures = app.SecurityEvents().Where(e => e.Id.Id == 1002).Select(e => e.Message).ToList();
+        Assert.Equal(2, failures.Count);
+        Assert.Contains("alice", failures[0], StringComparison.Ordinal);
+        Assert.Contains("198.51.100.5", failures[0], StringComparison.Ordinal);
+        Assert.Contains("(unknown name)", failures[1], StringComparison.Ordinal);
+        Assert.Contains("198.51.100.5", failures[1], StringComparison.Ordinal);
+        Assert.DoesNotContain(app.Logs(), record => record.Message.Contains("secret", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Signing_out_ends_the_session()
+    {
+        await using var app = App();
+        var client = await Browser.SignedInAsync(app);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+
+        var session = await client.GetFromJsonAsync<SessionView>("/api/auth/session", TestJson.Options, TestContext.Current.CancellationToken);
+        Assert.Null(session!.Operator);
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1004);
+    }
+
+    [Fact]
+    public async Task Sign_in_attempts_are_rate_limited()
+    {
+        await using var app = new InboxApp(new Dictionary<string, string?> { ["RateLimits:SignIns:PermitLimit"] = "3" });
+        var client = app.CreateBrowser();
+        await Browser.RefreshTokenAsync(client);
+
+        for (var attempt = 0; attempt < 3; attempt++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await SignInAsync(client, "nobody", WrongPassword)).Status);
+
+        var limited = await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "nobody", password = WrongPassword }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+    }
+
+    private static InboxApp App() => new(new Dictionary<string, string?> { ["RateLimits:SignIns:PermitLimit"] = "50" });
+
+    private static async Task<(HttpStatusCode Status, string? Title)> SignInAsync(HttpClient client, string name, string password)
+    {
+        var response = await client.PostAsJsonAsync("/api/auth/sign-in", new { name, password });
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return (response.StatusCode, problem.GetProperty("title").GetString());
+    }
+}
