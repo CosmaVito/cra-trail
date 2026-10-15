@@ -139,4 +139,13 @@ describe('ReportForm', () => {
     expect(element(fixture).querySelector('[role=alert]')).toBeNull();
     element(fixture).remove();
   });
+
+  it('exposes which fields are required', () => {
+    const root = element(fixture);
+
+    for (const id of ['product', 'version', 'description']) {
+      expect(root.querySelector(`#${id}`)?.getAttribute('aria-required')).toBe('true');
+    }
+    expect(root.querySelector('#contact')?.hasAttribute('aria-required')).toBe(false);
+  });
 });

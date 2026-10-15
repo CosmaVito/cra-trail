@@ -66,4 +66,10 @@ describe('StatusLookup', () => {
     expect(fixture.nativeElement.querySelector('#receipt').getAttribute('aria-invalid')).toBe('true');
     expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
   });
+
+  it('exposes the receipt field as required', () => {
+    const field = fixture.nativeElement.querySelector('#receipt') as HTMLInputElement;
+
+    expect(field.required || field.getAttribute('aria-required') === 'true').toBe(true);
+  });
 });

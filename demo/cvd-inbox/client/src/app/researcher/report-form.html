@@ -20,7 +20,7 @@
     <div class="field">
       @let productError = visibleError(reportForm.product());
       <label for="product">Product</label>
-      <input id="product" [formField]="reportForm.product" autocomplete="off"
+      <input id="product" [formField]="reportForm.product" autocomplete="off" aria-required="true"
              [attr.aria-invalid]="productError ? 'true' : null"
              [attr.aria-describedby]="productError ? 'product-error' : null" />
       @if (productError) {
@@ -31,7 +31,7 @@
     <div class="field">
       @let versionError = visibleError(reportForm.version());
       <label for="version">Version</label>
-      <input id="version" [formField]="reportForm.version" autocomplete="off"
+      <input id="version" [formField]="reportForm.version" autocomplete="off" aria-required="true"
              [attr.aria-invalid]="versionError ? 'true' : null"
              [attr.aria-describedby]="versionError ? 'version-error' : null" />
       @if (versionError) {
@@ -43,7 +43,7 @@
       @let descriptionError = visibleError(reportForm.description());
       <label for="description">Description</label>
       <p class="hint" id="description-hint">What is affected, how to reproduce it, and what an attacker could do with it.</p>
-      <textarea id="description" [formField]="reportForm.description"
+      <textarea id="description" [formField]="reportForm.description" aria-required="true"
                 [attr.aria-invalid]="descriptionError ? 'true' : null"
                 [attr.aria-describedby]="descriptionError ? 'description-hint description-error' : 'description-hint'"></textarea>
       @if (descriptionError) {
