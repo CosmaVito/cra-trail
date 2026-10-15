@@ -5,6 +5,7 @@ import { FormField, FormRoot, form, pattern, required } from '@angular/forms/sig
 import { InboxApi } from '../api/inbox-api';
 import { ReportStatusView, statusLabels } from '../api/models';
 import { describeFailure } from '../api/problem';
+import { focusFirstError } from '../forms/focus-first-error';
 import { serverFieldErrors } from '../forms/server-errors';
 import { visibleError } from '../forms/visible-error';
 
@@ -47,7 +48,7 @@ export class StatusLookup {
           }
           return undefined;
         },
-        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+        onInvalid: focusFirstError,
       },
     },
   );

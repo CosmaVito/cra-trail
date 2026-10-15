@@ -1,5 +1,7 @@
 <p><a routerLink="/operator">Back to the inbox</a></p>
 
+<p class="visually-hidden" role="status">{{ announcement() }}</p>
+
 @if (failure()) {
   <p class="alert" role="alert">{{ failure() }}</p>
 }
@@ -26,17 +28,13 @@
   <h2>Description</h2>
   <pre class="description" data-testid="description">{{ r.description }}</pre>
 
-  <h2 id="status-heading">Status</h2>
+  <h2 id="status-heading" #statusHeading tabindex="-1">Status</h2>
   @if (r.nextStatuses.length) {
-    <div class="actions" role="group" aria-labelledby="status-heading" #actions
-         [attr.aria-describedby]="statusError() ? 'status-error' : null">
+    <div class="actions" role="group" aria-labelledby="status-heading">
       @for (next of r.nextStatuses; track next) {
         <button type="button" (click)="move(next)">Move to {{ labels[next] }}</button>
       }
     </div>
-    @if (statusError()) {
-      <p class="error" id="status-error">{{ statusError() }}</p>
-    }
   } @else {
     <p>This report is closed for good.</p>
   }
@@ -74,11 +72,11 @@
     <div class="alert" role="group" aria-labelledby="delete-warning">
       <p id="delete-warning">This erases the report, its contact details and its notes. It cannot be undone.</p>
       <div class="actions">
-        <button type="button" class="danger" (click)="remove()">Delete for good</button>
-        <button type="button" class="secondary" (click)="confirmingDelete.set(false)">Cancel</button>
+        <button type="button" class="danger" #confirmButton (click)="remove()">Delete for good</button>
+        <button type="button" class="secondary" (click)="cancelDelete()">Cancel</button>
       </div>
     </div>
   } @else {
-    <button type="button" class="danger" (click)="confirmingDelete.set(true)">Delete report</button>
+    <button type="button" class="danger" #deleteButton (click)="askToDelete()">Delete report</button>
   }
 }

@@ -3,6 +3,7 @@ import { Component, InjectionToken, inject, signal } from '@angular/core';
 import { FormField, FormRoot, form, required } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { describeFailure } from '../api/problem';
+import { focusFirstError } from '../forms/focus-first-error';
 import { visibleError } from '../forms/visible-error';
 import { Session } from './session';
 
@@ -48,7 +49,7 @@ export class SignIn {
             field().reset({ name, password: '' });
           }
         },
-        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+        onInvalid: focusFirstError,
       },
     },
   );

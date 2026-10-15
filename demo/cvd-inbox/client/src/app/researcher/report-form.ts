@@ -3,6 +3,7 @@ import { FormField, FormRoot, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { InboxApi } from '../api/inbox-api';
 import { describeFailure } from '../api/problem';
+import { focusFirstError } from '../forms/focus-first-error';
 import { serverFieldErrors } from '../forms/server-errors';
 import { trimmedLength } from '../forms/trimmed';
 import { visibleError } from '../forms/visible-error';
@@ -53,7 +54,7 @@ export class ReportForm {
           }
           return undefined;
         },
-        onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
+        onInvalid: focusFirstError,
       },
     },
   );

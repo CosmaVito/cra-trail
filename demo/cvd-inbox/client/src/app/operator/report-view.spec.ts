@@ -140,22 +140,62 @@ describe('ReportView', () => {
     expect(element(fixture).querySelector<HTMLTextAreaElement>('#note')?.value).toBe('');
   });
 
-  it('shows a server status error next to the moves and focuses the first one', async () => {
+  it('announces the new status and moves focus to the status heading', async () => {
     await open(detail);
     document.body.appendChild(element(fixture));
 
     clickButton(fixture, 'Move to Triage');
     await tick();
-    http.expectOne('/api/inbox/7/status').flush(
-      { title: 'One or more validation errors occurred.', errors: { status: ['This report cannot move to that status.'] } },
-      { status: 400, statusText: 'Bad Request' },
-    );
+    http.expectOne('/api/inbox/7/status').flush({ ...detail, status: 'triage', nextStatuses: ['accepted', 'rejected'] });
     await settle(fixture);
 
-    expect(textOf(fixture, '#status-error')).toBe('This report cannot move to that status.');
-    expect(element(fixture).querySelector('.actions')?.getAttribute('aria-describedby')).toBe('status-error');
-    expect(document.activeElement?.textContent?.trim()).toBe('Move to Triage');
-    expect(element(fixture).querySelector('[role=alert]')).toBeNull();
+    expect(textOf(fixture, '[role=status]')).toBe('Status changed to Triage');
+    expect(document.activeElement?.id).toBe('status-heading');
+    element(fixture).remove();
+  });
+
+  it('announces an added note', async () => {
+    await open(detail);
+
+    typeInto(fixture, 'note', 'Looks real.');
+    clickButton(fixture, 'Add note');
+    await tick();
+    http.expectOne('/api/inbox/7/notes').flush({ id: 1, author: 'alice', text: 'Looks real.', createdAt: '2026-10-15T10:00:00Z' });
+    await settle(fixture);
+
+    expect(textOf(fixture, '[role=status]')).toBe('Note added');
+  });
+
+  it('reloads the report when the status changed under the operator', async () => {
+    await open(detail);
+
+    clickButton(fixture, 'Move to Triage');
+    await tick();
+    http.expectOne('/api/inbox/7/status').flush(
+      { title: 'A report in Accepted cannot move to Triage.' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await tick();
+    http.expectOne('/api/inbox/7').flush({ ...detail, status: 'accepted', nextStatuses: ['disclosed'] });
+    await settle(fixture);
+
+    const buttons = Array.from(element(fixture).querySelectorAll('.actions button')).map((b) => b.textContent?.trim());
+    expect(buttons).toEqual(['Move to Disclosed']);
+    expect(textOf(fixture, '[data-testid=report-status]')).toBe('Accepted');
+    expect(textOf(fixture, '[role=alert]')).toBe('A report in Accepted cannot move to Triage.');
+  });
+
+  it('moves focus into the delete confirmation and back on cancel', async () => {
+    await open(detail);
+    document.body.appendChild(element(fixture));
+
+    clickButton(fixture, 'Delete report');
+    await fixture.whenStable();
+    expect(document.activeElement?.textContent?.trim()).toBe('Delete for good');
+
+    clickButton(fixture, 'Cancel');
+    await fixture.whenStable();
+    expect(document.activeElement?.textContent?.trim()).toBe('Delete report');
     element(fixture).remove();
   });
 });
