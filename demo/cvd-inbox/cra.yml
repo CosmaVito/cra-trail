@@ -1,0 +1,30 @@
+# cra-trail configuration for the CVD Inbox demo. Changes go through pull request review like code.
+
+product:
+  name: CVD Inbox
+  purl: pkg:github/cosmavito/cra-trail#demo/cvd-inbox
+  # Last day of the support period (CRA Art. 13(8)).
+  support-end: 2027-12-31
+  # Vulnerabilities in CVD Inbox itself are reported through the private advisories of the cra-trail repository.
+  cvd-contact: https://github.com/CosmaVito/cra-trail/security/advisories/new
+  security-txt: https://cosmavito.github.io/.well-known/security.txt
+
+user-info:
+  manufacturer: Cosma Vito Iaffaldano
+  intended-purpose: Receive and triage vulnerability reports for software you publish. Example application, not for production use.
+  support: Security fixes until the support end date, as new releases of cra-trail on GitHub.
+  instructions: demo/cvd-inbox/README.md and demo/cvd-inbox/docs/operations.md
+
+attested:
+  annex-i/part-i/2b: docs/operations.md
+  annex-i/part-i/2g: docs/data-handling.md
+  annex-i/part-i/2j: docs/operations.md
+  annex-i/part-i/2l: docs/security-events.md
+  annex-i/part-i/2m: docs/data-handling.md
+
+not-applicable: {}
+
+gate:
+  max-cvss-without-vex: 9.0
+  block-kev-without-vex: true
+  require-bsi: false

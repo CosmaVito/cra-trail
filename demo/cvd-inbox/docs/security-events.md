@@ -1,0 +1,45 @@
+# Security events
+
+Annex I, Part I, point 2(l) of the Cyber Resilience Act: record and monitor relevant internal activity, with a way to opt out.
+
+CVD Inbox writes these events to standard output as JSON lines, under the log category `CvdInbox.Security`. Collect them with your container runtime or journal and forward them to your monitoring.
+
+| ID | Level | Event | Fields |
+|---|---|---|---|
+| 1001 | Information | Operator signed in | operator, client address |
+| 1002 | Warning | Failed sign-in | name if it belongs to an operator, otherwise `(unknown name)`; client address |
+| 1003 | Warning | Sign-in refused, account locked | name if it belongs to an operator, otherwise `(unknown name)`; client address |
+| 1004 | Information | Operator signed out | operator |
+| 1005 | Information | Operator created from the command line | operator |
+| 1101 | Information | Report received | report id |
+| 1102 | Warning | Report form trap filled, report discarded | client address |
+| 1103 | Warning | Rate limit reached | policy (`reports`, `lookups`, `sign-ins`), client address |
+| 1104 | Warning | Request without a valid request token refused | path, client address |
+| 1201 | Information | Report status changed | report id, from, to, operator |
+| 1202 | Information | Internal note added | report id, operator |
+| 1203 | Warning | Report deleted for good | report id, operator |
+| 1204 | Warning | Write-ahead log not truncated because the database was in use; the next sweep tries again | none |
+| 1301 | Information | Contacts erased after the retention period | number of reports |
+
+Two more events come from the retention job, under the log category `CvdInbox.Retention.RetentionService`, both at level Error with no fields beyond the exception:
+
+| ID | Event |
+|---|---|
+| 1302 | Erasing expired contacts failed; the next sweep tries again |
+| 1303 | Truncating the write-ahead log failed; the next sweep tries again |
+
+A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. The sign-in events 1002 and 1003 never carry what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
+
+## What the events never contain
+
+Report text, contacts, receipt codes, notes and passwords. The client address is not recorded with a report, so researchers can stay anonymous.
+
+## Opting out
+
+Set the level of the category to `None`, for example with `-e` in Docker or `Environment=` in a systemd unit:
+
+```
+Logging__LogLevel__CvdInbox.Security=None
+```
+
+The same works in `appsettings.json` under `Logging:LogLevel`. This silences every event in the first table. The two retention errors keep their own category: set `Logging__LogLevel__CvdInbox.Retention` to `None` to silence them too. Without these events there is no record of sign-ins, changes and deletions.
