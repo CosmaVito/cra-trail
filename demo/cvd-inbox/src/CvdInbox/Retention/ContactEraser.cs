@@ -18,15 +18,13 @@ public sealed class ContactEraser(InboxDb db, TimeProvider time, IOptions<InboxO
             .ExecuteUpdateAsync(set => set
                 .SetProperty(r => r.Contact, (string?)null)
                 .SetProperty(r => r.ContactErasedAt, now), cancellationToken);
+        // Logged once the update has committed; the log truncate comes after it, in a step of its own.
         if (erased > 0)
-        {
-            await TruncateWalAsync(cancellationToken);
             events.ContactsErased(erased);
-        }
         return erased;
     }
 
-    // The erasure has committed either way; a truncate that did not finish is logged and the next sweep retries it.
+    // A truncate that did not finish is logged; the next sweep tries again.
     public async Task TruncateWalAsync(CancellationToken cancellationToken)
     {
         if (!await db.TruncateWalAsync(cancellationToken))

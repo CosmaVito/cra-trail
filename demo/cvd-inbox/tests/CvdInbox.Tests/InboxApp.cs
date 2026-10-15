@@ -22,8 +22,8 @@ public sealed class InboxApp : WebApplicationFactory<Program>
 
     private readonly bool retentionSweep;
 
-    // retentionSweep: false removes the background sweep, for tests that call the eraser themselves.
-    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = true)
+    // The background retention sweep runs only when a test asks for it: its sweeps and log truncates would race the test's own steps.
+    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = false)
     {
         this.retentionSweep = retentionSweep;
         DataDirectory = Directory.CreateTempSubdirectory("cvd-inbox-").FullName;
@@ -88,7 +88,7 @@ public sealed class InboxApp : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
             if (!retentionSweep)
-                services.Remove(services.Single(d => d.ImplementationType == typeof(CvdInbox.Retention.RetentionService)));
+                services.Remove(services.Single(d => !d.IsKeyedService && d.ImplementationType == typeof(CvdInbox.Retention.RetentionService)));
         });
     }
 

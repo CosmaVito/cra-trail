@@ -146,6 +146,8 @@ public class InboxEndpointTests
         foreach (var marker in new[] { "zz-description-marker-4711", "zz-contact-marker-4711", "zz-note-marker-4711" })
             Assert.False(DataFiles.Contain(app.DataDirectory, marker), marker);
         Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1203);
+        // Another test clearing the connection pools can checkpoint the log too; the bytes alone would hide a failed truncate.
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id == 1204);
     }
 
     [Fact]
@@ -155,9 +157,11 @@ public class InboxEndpointTests
         var report = TestData.Report(app.Time.GetUtcNow().UtcDateTime, contact: "zz-contact-marker-4711@example.test");
         var id = await app.AddReportAsync(report);
         var client = await Browser.SignedInAsync(app);
+        // Not pooled: a pooled connection goes back to the pool with its BEGIN still open, so closing it would not end the read.
+        var readerSettings = new SqliteConnectionStringBuilder { DataSource = Path.Combine(app.DataDirectory, DataSetup.DatabaseFile), Pooling = false };
 
         // An open read transaction pins the log, as a backup or a slow query would.
-        await using (var reader = new SqliteConnection($"Data Source={Path.Combine(app.DataDirectory, DataSetup.DatabaseFile)}"))
+        await using (var reader = new SqliteConnection(readerSettings.ToString()))
         {
             await reader.OpenAsync(Ct);
             await using (var begin = reader.CreateCommand())
@@ -171,6 +175,8 @@ public class InboxEndpointTests
             Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
             var warning = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1204);
             Assert.DoesNotContain("zz-contact", warning.Message, StringComparison.Ordinal);
+            Assert.False(await app.WithDbAsync(db => db.TruncateWalAsync(Ct)));
+            // The reader's snapshot still holds the report, so SQLite keeps its bytes: the check after the close would see them.
             Assert.True(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-4711"));
         }
 

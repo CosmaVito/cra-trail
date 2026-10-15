@@ -48,7 +48,7 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
     [LoggerMessage(EventId = 1203, Level = LogLevel.Warning, Message = "Report {ReportId} and its notes deleted for good by {OperatorName}.")]
     public partial void ReportDeleted(int reportId, string operatorName);
 
-    [LoggerMessage(EventId = 1204, Level = LogLevel.Warning, Message = "The write-ahead log could not be truncated after a deletion; it will be retried.")]
+    [LoggerMessage(EventId = 1204, Level = LogLevel.Warning, Message = "The write-ahead log could not be truncated because the database was in use; the next retention sweep tries again.")]
     public partial void WalTruncateIncomplete();
 
     [LoggerMessage(EventId = 1301, Level = LogLevel.Information, Message = "Contact details erased from {Count} closed reports.")]

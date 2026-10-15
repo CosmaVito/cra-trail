@@ -14,7 +14,7 @@ public class RetentionTests
         await using var app = App();
         var id = await app.AddReportAsync(TestData.Report(Now(app).AddDays(-400), status: ReportStatus.Triage));
 
-        await EraseAsync(app);
+        await SweepAsync(app);
 
         Assert.NotNull((await FindAsync(app, id)).Contact);
     }
@@ -25,9 +25,9 @@ public class RetentionTests
         await using var app = App();
         var id = await app.AddReportAsync(Closed(Now(app).AddDays(-30).AddHours(1)));
 
-        Assert.Equal(0, await EraseAsync(app));
+        Assert.Equal(0, await SweepAsync(app));
         app.Time.Advance(TimeSpan.FromHours(1));
-        Assert.Equal(1, await EraseAsync(app));
+        Assert.Equal(1, await SweepAsync(app));
 
         var report = await FindAsync(app, id);
         Assert.Null(report.Contact);
@@ -41,7 +41,7 @@ public class RetentionTests
         await using var app = App(("Inbox:ContactRetentionDays", "0"));
         var id = await app.AddReportAsync(Closed(Now(app)));
 
-        await EraseAsync(app);
+        await SweepAsync(app);
 
         Assert.Null((await FindAsync(app, id)).Contact);
     }
@@ -59,7 +59,7 @@ public class RetentionTests
         client = await Browser.SignedInAsync(app);
         (await client.PostAsJsonAsync($"/api/inbox/{id}/status", new { status = "triage" }, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
         app.Time.Advance(TimeSpan.FromDays(20));
-        await EraseAsync(app);
+        await SweepAsync(app);
 
         Assert.NotNull((await FindAsync(app, id)).Contact);
     }
@@ -74,35 +74,34 @@ public class RetentionTests
         // The check can see the contact before the erasure.
         Assert.True(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-0815"));
 
-        await EraseAsync(app);
+        await SweepAsync(app);
 
         Assert.False(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-0815"));
+        // Another test clearing the connection pools can checkpoint the log too; the bytes alone would hide a failed truncate.
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id == 1204);
     }
 
     [Fact]
     public async Task The_background_sweep_erases_expired_contacts()
     {
-        await using var app = new InboxApp();
-        var id = await app.AddReportAsync(Closed(Now(app).AddDays(-31)));
+        await using var app = new InboxApp(retentionSweep: true);
+        var start = Now(app);
+        // Neither contact has expired at startup, and the clock moves on only once the first is gone,
+        // so two sweeps erase them at two different times: the timer ticked at least once.
+        var first = await app.AddReportAsync(Closed(start.AddDays(-30).AddMinutes(30)));
+        var second = await app.AddReportAsync(Closed(start.AddDays(-30).AddMinutes(90)));
 
-        // The sweep runs every hour of the fake clock; give the background service a moment after each tick.
-        for (var attempt = 0; attempt < 50 && (await FindAsync(app, id)).Contact is not null; attempt++)
-        {
-            app.Time.Advance(TimeSpan.FromHours(1));
-            await Task.Delay(100, TestContext.Current.CancellationToken);
-        }
+        app.Time.Advance(TimeSpan.FromHours(1));
+        await WaitForErasureAsync(app, first);
+        app.Time.Advance(TimeSpan.FromHours(1));
+        await WaitForErasureAsync(app, second);
 
-        Assert.Null((await FindAsync(app, id)).Contact);
+        Assert.Equal(start.AddHours(1), (await FindAsync(app, first)).ContactErasedAt);
+        Assert.Equal(start.AddHours(2), (await FindAsync(app, second)).ContactErasedAt);
     }
 
-    // A one-day sweep and no background service keep the sweep out of the way while a test moves the clock by hours.
-    private static InboxApp App(params (string Key, string Value)[] extra)
-    {
-        var settings = new Dictionary<string, string?> { ["Inbox:RetentionSweepInterval"] = "1.00:00:00" };
-        foreach (var (key, value) in extra)
-            settings[key] = value;
-        return new InboxApp(settings, retentionSweep: false);
-    }
+    private static InboxApp App(params (string Key, string Value)[] extra) =>
+        new(extra.ToDictionary(setting => setting.Key, setting => (string?)setting.Value));
 
     private static DateTime Now(InboxApp app) => app.Time.GetUtcNow().UtcDateTime;
 
@@ -113,8 +112,21 @@ public class RetentionTests
         return report;
     }
 
-    private static Task<int> EraseAsync(InboxApp app) =>
-        app.InScopeAsync(services => services.GetRequiredService<ContactEraser>().EraseExpiredAsync(CancellationToken.None));
+    // One sweep of the background service, without its timer: erase, then truncate the log.
+    private static Task<int> SweepAsync(InboxApp app) => app.InScopeAsync(async services =>
+    {
+        var eraser = services.GetRequiredService<ContactEraser>();
+        var erased = await eraser.EraseExpiredAsync(CancellationToken.None);
+        await eraser.TruncateWalAsync(CancellationToken.None);
+        return erased;
+    });
+
+    // The sweep runs on a background thread; give it a moment after the clock moves.
+    private static async Task WaitForErasureAsync(InboxApp app, int id)
+    {
+        for (var attempt = 0; attempt < 100 && (await FindAsync(app, id)).Contact is not null; attempt++)
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+    }
 
     private static Task<Report> FindAsync(InboxApp app, int id) =>
         app.WithDbAsync(db => db.Reports.AsNoTracking().SingleAsync(r => r.Id == id));
