@@ -4,10 +4,14 @@ using CvdInbox;
 using CvdInbox.Data;
 using CvdInbox.Disclosure;
 using CvdInbox.Hosting;
+using CvdInbox.Operators;
 using CvdInbox.Reports;
 using CvdInbox.Security;
 
-var builder = WebApplication.CreateBuilder(args);
+// "cvd-inbox create-operator <name>" runs a command instead of the server. The check comes after Build(),
+// because the EF Core tools stop the program there.
+var runCommand = args is [OperatorCommand.Name, ..];
+var builder = WebApplication.CreateBuilder(runCommand ? [] : args);
 
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 
@@ -20,8 +24,12 @@ builder.Services.AddInboxData();
 builder.Services.AddDisclosure();
 builder.Services.AddSingleton<SecurityEvents>();
 builder.Services.AddInboxRateLimits();
+builder.Services.AddOperators();
 
 await using var app = builder.Build();
+
+if (runCommand)
+    return await OperatorCommand.RunAsync(app.Services, args, Console.In, Console.Out, Console.Error);
 
 await app.Services.PrepareDatabaseAsync();
 

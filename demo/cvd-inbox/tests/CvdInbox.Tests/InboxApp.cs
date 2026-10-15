@@ -1,4 +1,5 @@
 using CvdInbox.Data;
+using CvdInbox.Operators;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -14,6 +15,8 @@ namespace CvdInbox.Tests;
 // which minimal hosting reads before Program.cs builds the app.
 public sealed class InboxApp : WebApplicationFactory<Program>
 {
+    public const string AlicePassword = "correct horse battery staple";
+
     private readonly Dictionary<string, string?> settings;
 
     public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null)
@@ -62,6 +65,12 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         await db.SaveChangesAsync();
         return report.Id;
     });
+
+    public Task<OperatorCreation> CreateOperatorAsync(string name = "alice", string password = AlicePassword) =>
+        InScopeAsync(services => services.GetRequiredService<OperatorAccounts>().CreateAsync(name, password, CancellationToken.None));
+
+    public Task<PasswordCheck> CheckPasswordAsync(string name, string password) =>
+        InScopeAsync(services => services.GetRequiredService<OperatorAccounts>().CheckPasswordAsync(name, password, CancellationToken.None));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

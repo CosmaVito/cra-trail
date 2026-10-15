@@ -18,4 +18,7 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "Rate limit {Policy} reached by {ClientAddress}.")]
     public partial void RateLimited(string policy, string? clientAddress);
+
+    [LoggerMessage(EventId = 1005, Level = LogLevel.Information, Message = "Operator {OperatorName} created from the command line.")]
+    public partial void OperatorCreated(string operatorName);
 }
