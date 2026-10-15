@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CvdInbox.Data;
 using CvdInbox.Inbox;
 using CvdInbox.Operators;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace CvdInbox.Tests;
@@ -100,7 +101,7 @@ public class InboxEndpointTests
         var client = await Browser.SignedInAsync(app);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "   " }, Ct)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "fixed ‮ in 1.2.4" }, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "fixed \u202E in 1.2.4" }, Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/inbox/999/notes", new { text = "Hello" }, Ct)).StatusCode);
 
         var added = await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "Fixed in 1.2.4." }, Ct);
@@ -145,5 +146,35 @@ public class InboxEndpointTests
         foreach (var marker in new[] { "zz-description-marker-4711", "zz-contact-marker-4711", "zz-note-marker-4711" })
             Assert.False(DataFiles.Contain(app.DataDirectory, marker), marker);
         Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1203);
+    }
+
+    [Fact]
+    public async Task A_reader_that_stays_open_delays_the_log_truncation_and_it_is_logged_then_retried()
+    {
+        await using var app = new InboxApp();
+        var report = TestData.Report(app.Time.GetUtcNow().UtcDateTime, contact: "zz-contact-marker-4711@example.test");
+        var id = await app.AddReportAsync(report);
+        var client = await Browser.SignedInAsync(app);
+
+        // An open read transaction pins the log, as a backup or a slow query would.
+        await using (var reader = new SqliteConnection($"Data Source={Path.Combine(app.DataDirectory, DataSetup.DatabaseFile)}"))
+        {
+            await reader.OpenAsync(Ct);
+            await using (var begin = reader.CreateCommand())
+            {
+                begin.CommandText = "BEGIN; SELECT COUNT(*) FROM Reports;";
+                await begin.ExecuteScalarAsync(Ct);
+            }
+
+            var deleted = await client.DeleteAsync($"/api/inbox/{id}", Ct);
+
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            var warning = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1204);
+            Assert.DoesNotContain("zz-contact", warning.Message, StringComparison.Ordinal);
+            Assert.True(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-4711"));
+        }
+
+        Assert.True(await app.WithDbAsync(db => db.TruncateWalAsync(Ct)));
+        Assert.False(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-4711"));
     }
 }

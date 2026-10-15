@@ -114,7 +114,9 @@ public static class InboxEndpoints
         var deleted = await db.Reports.Where(r => r.Id == id).ExecuteDeleteAsync(cancellationToken);
         if (deleted == 0)
             return NoSuchReport();
-        await db.TruncateWalAsync(cancellationToken);
+        // The delete has committed either way. If a reader keeps the log from being truncated, it is logged and retried later.
+        if (!await db.TruncateWalAsync(cancellationToken))
+            events.WalTruncateIncomplete();
         events.ReportDeleted(id, user.Identity!.Name!);
         return Results.NoContent();
     }
