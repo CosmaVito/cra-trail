@@ -42,7 +42,10 @@ public static class PackBuilder
                 vexDocuments.Add(node!);
                 continue;
             }
-            var content = input.Kind == EvidenceKinds.SecretsSarif ? CraTrailJson.SerializeNode(Sarif.Redact(node!)) : input.Content;
+            // Any SARIF can quote source lines, and the pack is meant to be published.
+            var content = input.Kind is EvidenceKinds.SecretsSarif or EvidenceKinds.SastSarif
+                ? CraTrailJson.SerializeNode(Sarif.Redact(node!))
+                : input.Content;
             Add(files, path, input.Kind, content);
         }
 

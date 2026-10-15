@@ -152,6 +152,18 @@ public class PackBuilderTests
         Assert.NotEqual(pack.Files[PackContents.EvaluationPath], again.Files[PackContents.EvaluationPath]);
     }
 
+    [Fact]
+    public void Static_analysis_sarif_is_redacted_too()
+    {
+        var pack = PackBuilder.Build(Request(
+            new PackInput(EvidenceKinds.ProductSbom, "bom.json", Sbom),
+            Fixture(EvidenceKinds.SastSarif, "leaks.sarif", "sarif", "betterleaks.sarif")), TestRules.Minimal, FakeEvaluate);
+
+        var text = Encoding.UTF8.GetString(pack.Files["scans/leaks.sarif"]);
+        Assert.DoesNotContain("not-a-real-key", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("dev@example.org", text, StringComparison.Ordinal);
+    }
+
     private static PackRequest Request(params PackInput[] inputs) => new(
         TestProducts.Default,
         inputs,

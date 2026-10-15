@@ -8,6 +8,8 @@ public sealed record SarifResult(string Tool, string RuleId, string Level, doubl
 
 public static class Sarif
 {
+    private static readonly string[] ContentProperties = ["snippet", "contents", "insertedContent"];
+
     public static IReadOnlyList<SarifResult> ParseResults(JsonNode log)
     {
         if (JsonAccess.Child(log, "runs") is not JsonArray runs)
@@ -51,26 +53,30 @@ public static class Sarif
     {
         ArgumentNullException.ThrowIfNull(log);
         var copy = log.DeepClone();
-        foreach (var run in JsonAccess.Items(JsonAccess.Child(copy, "runs")))
-        {
-            foreach (var result in JsonAccess.Items(JsonAccess.Child(run, "results")))
-            {
-                if (result is JsonObject resultObject)
-                    resultObject.Remove("partialFingerprints");
-                var locations = JsonAccess.Items(JsonAccess.Child(result, "locations"))
-                    .Concat(JsonAccess.Items(JsonAccess.Child(result, "relatedLocations")));
-                foreach (var location in locations)
-                {
-                    var physical = JsonAccess.Child(location, "physicalLocation");
-                    foreach (var region in new[] { JsonAccess.Child(physical, "region"), JsonAccess.Child(physical, "contextRegion") })
-                    {
-                        if (JsonAccess.Child(region, "snippet") is JsonObject snippet && snippet.ContainsKey("text"))
-                            snippet["text"] = "REDACTED";
-                    }
-                }
-            }
-        }
+        RedactNode(copy);
         return copy;
+    }
+
+    // Snippets and file contents can also sit in code flows, fixes and run.artifacts, so the whole log is walked.
+    private static void RedactNode(JsonNode? node)
+    {
+        if (node is JsonArray array)
+        {
+            foreach (var item in array)
+                RedactNode(item);
+            return;
+        }
+        if (node is not JsonObject obj)
+            return;
+
+        obj.Remove("partialFingerprints");
+        foreach (var name in ContentProperties)
+        {
+            if (obj[name] is JsonObject)
+                obj[name] = new JsonObject { ["text"] = "REDACTED" };
+        }
+        foreach (var (_, child) in obj.ToList())
+            RedactNode(child);
     }
 
     private static JsonNode? FindRule(JsonNode result, JsonNode? ruleRef, string ruleId, JsonArray? driverRules, JsonArray? extensions)

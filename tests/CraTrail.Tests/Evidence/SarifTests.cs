@@ -50,6 +50,28 @@ public class SarifTests
     }
 
     [Fact]
+    public void Redact_reaches_code_flows_rendered_snippets_and_artifact_contents()
+    {
+        var log = JsonNode.Parse("""
+            { "runs": [ {
+                "tool": { "driver": { "name": "x" } },
+                "artifacts": [ { "location": { "uri": "a.env" }, "contents": { "text": "token=secret-one" } } ],
+                "results": [ {
+                  "ruleId": "r1",
+                  "locations": [ { "physicalLocation": { "region": { "snippet": { "rendered": { "text": "secret-two" } } } } } ],
+                  "codeFlows": [ { "threadFlows": [ { "locations": [ { "location": { "physicalLocation": {
+                    "region": { "snippet": { "text": "secret-three" } } } } } ] } ] } ]
+                } ]
+            } ] }
+            """)!;
+
+        var redacted = Sarif.Redact(log).ToJsonString();
+
+        Assert.DoesNotContain("secret-", redacted, StringComparison.Ordinal);
+        Assert.Equal("r1", Assert.Single(Sarif.ParseResults(Sarif.Redact(log))).RuleId);
+    }
+
+    [Fact]
     public void Other_json_is_rejected() =>
         Assert.Throws<FormatException>(() => Sarif.ParseResults(JsonNode.Parse("""{ "version": "2.1.0" }""")!));
 }
