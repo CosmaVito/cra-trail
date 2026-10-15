@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "0.1",
+  "rulesVersion": "test-1",
+  "checks": [
+    { "id": "distribution-signed", "type": "attested-field", "status": "pass", "details": [] },
+    { "id": "no-critical-without-vex", "type": "vex-covers", "status": "pass", "details": [] },
+    { "id": "no-kev-without-vex", "type": "vex-covers", "status": "pass", "details": [] },
+    { "id": "no-secrets", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sast-no-high", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sbom-bsi-fields", "type": "json-field-required", "status": "pass", "details": [] },
+    { "id": "sbom-core-fields", "type": "json-field-required", "status": "pass", "details": [] },
+    { "id": "sbom-present", "type": "file-present", "status": "pass", "details": [] },
+    { "id": "support-end-set", "type": "attested-field", "status": "pass", "details": [] }
+  ],
+  "requirements": [
+    { "id": "t/vulns", "point": "T1", "title": "No known exploitable vulnerabilities", "coverage": "automated", "status": "pass",
+      "checks": ["no-kev-without-vex", "no-critical-without-vex"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/sbom", "point": "T2", "title": "Components identified in an SBOM", "coverage": "automated", "status": "pass",
+      "checks": ["sbom-present", "sbom-core-fields"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/risk", "point": "T3", "title": "Risk assessment", "coverage": "manual", "status": "attested",
+      "checks": [], "attestation": "attested/docs/risk-assessment.md", "reason": null, "details": [] },
+    { "id": "t/access", "point": "T4", "title": "Protection from unauthorised access", "coverage": "partial", "status": "pass",
+      "checks": ["sast-no-high"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/other", "point": "T5", "title": "Impact on other devices", "coverage": "manual", "status": "fail",
+      "checks": [], "attestation": null, "reason": null, "details": ["not-applicable requires a reason"] }
+  ],
+  "gate": {
+    "passed": true,
+    "required": ["no-kev-without-vex", "no-critical-without-vex", "no-secrets", "sbom-core-fields", "support-end-set"],
+    "blocking": []
+  },
+  "totals": { "pass": 3, "fail": 1, "attested": 1, "missing": 0, "notApplicable": 0 }
+}

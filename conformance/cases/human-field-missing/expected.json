@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "0.1",
+  "rulesVersion": "test-1",
+  "checks": [
+    { "id": "distribution-signed", "type": "attested-field", "status": "pass", "details": [] },
+    { "id": "no-critical-without-vex", "type": "vex-covers", "status": "pass", "details": [] },
+    { "id": "no-kev-without-vex", "type": "vex-covers", "status": "pass", "details": [] },
+    { "id": "no-secrets", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sast-no-high", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sbom-bsi-fields", "type": "json-field-required", "status": "pass", "details": [] },
+    { "id": "sbom-core-fields", "type": "json-field-required", "status": "pass", "details": [] },
+    { "id": "sbom-present", "type": "file-present", "status": "pass", "details": [] },
+    { "id": "support-end-set", "type": "attested-field", "status": "missing", "details": ["product.supportEnd is not set"] }
+  ],
+  "requirements": [
+    { "id": "t/vulns", "point": "T1", "title": "No known exploitable vulnerabilities", "coverage": "automated", "status": "pass",
+      "checks": ["no-kev-without-vex", "no-critical-without-vex"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/sbom", "point": "T2", "title": "Components identified in an SBOM", "coverage": "automated", "status": "pass",
+      "checks": ["sbom-present", "sbom-core-fields"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/risk", "point": "T3", "title": "Risk assessment", "coverage": "manual", "status": "missing",
+      "checks": [], "attestation": null, "reason": null, "details": ["attested document not in pack: attested/docs/risk-assessment.md"] },
+    { "id": "t/access", "point": "T4", "title": "Protection from unauthorised access", "coverage": "partial", "status": "pass",
+      "checks": ["sast-no-high"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/other", "point": "T5", "title": "Impact on other devices", "coverage": "manual", "status": "not-applicable",
+      "checks": [], "attestation": null, "reason": "Runs as a single local service with no network functions that affect other devices.", "details": [] }
+  ],
+  "gate": {
+    "passed": false,
+    "required": ["no-kev-without-vex", "no-critical-without-vex", "no-secrets", "sbom-core-fields", "support-end-set"],
+    "blocking": [
+      { "check": "support-end-set", "status": "missing", "details": ["product.supportEnd is not set"], "hint": "Set product.support-end in cra.yml." }
+    ]
+  },
+  "totals": { "pass": 3, "fail": 0, "attested": 0, "missing": 1, "notApplicable": 1 }
+}

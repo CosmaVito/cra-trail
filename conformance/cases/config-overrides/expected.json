@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "0.1",
+  "rulesVersion": "test-1",
+  "checks": [
+    { "id": "distribution-signed", "type": "attested-field", "status": "pass", "details": [] },
+    { "id": "no-critical-without-vex", "type": "vex-covers", "status": "fail", "details": ["GHSA-5crp-9r3c-p9vr pkg:nuget/Newtonsoft.Json@12.0.1"] },
+    { "id": "no-kev-without-vex", "type": "vex-covers", "status": "pass", "details": [] },
+    { "id": "no-secrets", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sast-no-high", "type": "scan-threshold", "status": "pass", "details": [] },
+    { "id": "sbom-bsi-fields", "type": "json-field-required", "status": "fail", "details": ["component-executable: cvd-inbox", "component-executable: ref-angular-core", "component-executable: ref-newtonsoft", "component-filename: cvd-inbox", "component-filename: ref-angular-core", "component-filename: ref-newtonsoft", "sbom-creator"] },
+    { "id": "sbom-core-fields", "type": "json-field-required", "status": "pass", "details": [] },
+    { "id": "sbom-present", "type": "file-present", "status": "pass", "details": [] },
+    { "id": "support-end-set", "type": "attested-field", "status": "pass", "details": [] }
+  ],
+  "requirements": [
+    { "id": "t/vulns", "point": "T1", "title": "No known exploitable vulnerabilities", "coverage": "automated", "status": "fail",
+      "checks": ["no-kev-without-vex", "no-critical-without-vex"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/sbom", "point": "T2", "title": "Components identified in an SBOM", "coverage": "automated", "status": "pass",
+      "checks": ["sbom-present", "sbom-core-fields"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/risk", "point": "T3", "title": "Risk assessment", "coverage": "manual", "status": "attested",
+      "checks": [], "attestation": "attested/docs/risk-assessment.md", "reason": null, "details": [] },
+    { "id": "t/access", "point": "T4", "title": "Protection from unauthorised access", "coverage": "partial", "status": "pass",
+      "checks": ["sast-no-high"], "attestation": null, "reason": null, "details": [] },
+    { "id": "t/other", "point": "T5", "title": "Impact on other devices", "coverage": "manual", "status": "not-applicable",
+      "checks": [], "attestation": null, "reason": "Runs as a single local service with no network functions that affect other devices.", "details": [] }
+  ],
+  "gate": {
+    "passed": false,
+    "required": ["no-critical-without-vex", "no-secrets", "sbom-core-fields", "support-end-set", "sbom-bsi-fields"],
+    "blocking": [
+      { "check": "no-critical-without-vex", "status": "fail", "details": ["GHSA-5crp-9r3c-p9vr pkg:nuget/Newtonsoft.Json@12.0.1"], "hint": "Upgrade the component, or add an OpenVEX statement with status not_affected or fixed." },
+      { "check": "sbom-bsi-fields", "status": "fail", "details": ["component-executable: cvd-inbox", "component-executable: ref-angular-core", "component-executable: ref-newtonsoft", "component-filename: cvd-inbox", "component-filename: ref-angular-core", "component-filename: ref-newtonsoft", "sbom-creator"], "hint": "Add the BSI TR-03183-2 fields to the SBOM, or set gate.require-bsi to false." }
+    ]
+  },
+  "totals": { "pass": 2, "fail": 1, "attested": 1, "missing": 0, "notApplicable": 1 }
+}

@@ -1,0 +1,49 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-15T00:00:00Z",
+    "manufacturer": { "name": "Example Maker", "contact": [ { "email": "sbom@example.org" } ] },
+    "component": {
+      "bom-ref": "cvd-inbox",
+      "type": "application",
+      "name": "cvd-inbox",
+      "version": "1.2.0",
+      "properties": [
+        { "name": "bsi:component:filename", "value": "cvd-inbox-1.2.0-linux-x64.zip" },
+        { "name": "bsi:component:executable", "value": "executable" }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "ref-newtonsoft",
+      "type": "library",
+      "name": "Newtonsoft.Json",
+      "version": "13.0.3",
+      "purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
+      "properties": [
+        { "name": "bsi:component:filename", "value": "Newtonsoft.Json.dll" },
+        { "name": "bsi:component:executable", "value": "executable" }
+      ]
+    },
+    {
+      "bom-ref": "ref-angular-core",
+      "type": "library",
+      "name": "@angular/core",
+      "version": "22.2.2",
+      "purl": "pkg:npm/%40angular/core@22.2.2",
+      "properties": [
+        { "name": "bsi:component:filename", "value": "main.js" },
+        { "name": "bsi:component:executable", "value": "executable" }
+      ]
+    }
+  ],
+  "dependencies": [
+    { "ref": "cvd-inbox", "dependsOn": [ "ref-newtonsoft", "ref-angular-core" ] },
+    { "ref": "ref-newtonsoft", "dependsOn": [] },
+    { "ref": "ref-angular-core", "dependsOn": [] }
+  ]
+}

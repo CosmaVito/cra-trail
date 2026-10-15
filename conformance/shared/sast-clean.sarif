@@ -1,0 +1,9 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": { "driver": { "name": "CodeQL", "rules": [ { "id": "cs/sql-injection", "defaultConfiguration": { "level": "error" }, "properties": { "security-severity": "8.8" } } ] } },
+      "results": []
+    }
+  ]
+}

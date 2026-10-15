@@ -1,0 +1,20 @@
+id: bsi-mini
+title: BSI TR-03183-2 subset for the conformance tests
+fields:
+  - id: sbom-creator
+    paths:
+      - metadata.manufacturer.contact[*].email
+      - metadata.manufacturer.url[*]
+    require: non-empty
+  - id: component-filename
+    each: all-components
+    path: properties[name=bsi:component:filename].value
+    require: non-empty
+  - id: component-executable
+    each: all-components
+    path: properties[name=bsi:component:executable].value
+    require:
+      one-of: [executable, non-executable]
+  - id: no-vulnerabilities
+    path: vulnerabilities
+    require: absent

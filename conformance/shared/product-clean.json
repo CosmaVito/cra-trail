@@ -1,0 +1,14 @@
+{
+  "name": "CVD Inbox",
+  "version": "1.2.0",
+  "purl": "pkg:github/CosmaVito/cra-trail#demo/cvd-inbox",
+  "supportEnd": "2031-12-31",
+  "cvdContact": "security@example.org",
+  "securityTxt": "https://example.org/.well-known/security.txt",
+  "userInfo": {},
+  "attested": { "t/risk": "attested/docs/risk-assessment.md" },
+  "notApplicable": { "t/other": "Runs as a single local service with no network functions that affect other devices." },
+  "checkOverrides": {},
+  "gateInclude": [],
+  "gateExclude": []
+}

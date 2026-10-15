@@ -1,0 +1,44 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-15T00:00:00Z",
+    "manufacturer": { "name": "Example Maker", "contact": [ { "email": "sbom@example.org" } ] }
+  },
+  "components": [
+    {
+      "bom-ref": "backend",
+      "type": "application",
+      "name": "backend",
+      "properties": [
+        { "name": "bsi:component:filename", "value": "backend.dll" },
+        { "name": "bsi:component:executable", "value": "executable" }
+      ],
+      "components": [
+        {
+          "bom-ref": "ref-a",
+          "type": "library",
+          "name": "Lib.A",
+          "purl": "pkg:nuget/Lib.A",
+          "properties": [
+            { "name": "bsi:component:filename", "value": "Lib.A.dll" },
+            { "name": "bsi:component:executable", "value": "executable" }
+          ]
+        },
+        {
+          "bom-ref": "ref-b",
+          "type": "library",
+          "name": "Lib.B",
+          "version": "1.0.0",
+          "purl": "pkg:nuget/Lib.B@1.0.0",
+          "properties": [
+            { "name": "bsi:component:filename", "value": "Lib.B.dll" },
+            { "name": "bsi:component:executable", "value": "executable" }
+          ]
+        }
+      ]
+    }
+  ],
+  "dependencies": [ { "ref": "backend", "dependsOn": [ "ref-a", "ref-b" ] } ]
+}

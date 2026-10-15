@@ -1,0 +1,81 @@
+version: "test-1"
+gate:
+  - no-kev-without-vex
+  - no-critical-without-vex
+  - no-secrets
+  - sbom-core-fields
+  - support-end-set
+checks:
+  distribution-signed:
+    type: attested-field
+    field: manifest.signing.method
+  no-critical-without-vex:
+    type: vex-covers
+    kind: grype
+    select:
+      min-cvss: 9.0
+    hint: Upgrade the component, or add an OpenVEX statement with status not_affected or fixed.
+  no-kev-without-vex:
+    type: vex-covers
+    kind: grype
+    select:
+      kev: true
+    hint: Upgrade the component, or add an OpenVEX statement with status not_affected or fixed.
+  no-secrets:
+    type: scan-threshold
+    kind: secrets-sarif
+    max-results: 0
+    hint: Remove the secret from the repository and rotate it.
+  sast-no-high:
+    type: scan-threshold
+    kind: sast-sarif
+    min-security-severity: 7.0
+    max-results: 0
+  sbom-bsi-fields:
+    type: json-field-required
+    kind: product-sbom
+    profile: bsi-mini
+    hint: Add the BSI TR-03183-2 fields to the SBOM, or set gate.require-bsi to false.
+  sbom-core-fields:
+    type: json-field-required
+    kind: product-sbom
+    profile: sbom-core
+    hint: Regenerate the SBOM so that every component has a name, a version and a purl.
+  sbom-present:
+    type: file-present
+    kind: product-sbom
+  support-end-set:
+    type: attested-field
+    field: product.supportEnd
+    hint: Set product.support-end in cra.yml.
+requirements:
+  - id: t/vulns
+    point: T1
+    title: No known exploitable vulnerabilities
+    source: Conformance test rule
+    coverage: automated
+    checks: [no-kev-without-vex, no-critical-without-vex]
+  - id: t/sbom
+    point: T2
+    title: Components identified in an SBOM
+    source: Conformance test rule
+    coverage: automated
+    checks: [sbom-present, sbom-core-fields]
+  - id: t/risk
+    point: T3
+    title: Risk assessment
+    source: Conformance test rule
+    coverage: manual
+    checks: []
+  - id: t/access
+    point: T4
+    title: Protection from unauthorised access
+    source: Conformance test rule
+    coverage: partial
+    checks: [sast-no-high]
+  - id: t/other
+    point: T5
+    title: Impact on other devices
+    source: Conformance test rule
+    coverage: manual
+    checks: []
