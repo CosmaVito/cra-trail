@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using CvdInbox.Hosting;
+using Microsoft.AspNetCore.Hosting;
 
 namespace CvdInbox.Tests;
 
@@ -41,6 +42,35 @@ public class HostingTests
         var response = await app.CreateBrowser().PostAsync("/api/nothing-here", content, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_client_page_is_checked_again_on_every_visit_and_bundles_keep_their_caching()
+    {
+        var webRoot = Directory.CreateTempSubdirectory("cvd-inbox-web-");
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(webRoot.FullName, "index.html"), "<!doctype html><title>CVD Inbox</title>", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(webRoot.FullName, "main-ABCD1234.js"), "export {};", TestContext.Current.CancellationToken);
+            await using var app = new InboxApp(new Dictionary<string, string?> { [WebHostDefaults.WebRootKey] = webRoot.FullName });
+            var client = app.CreateBrowser();
+
+            var bundle = await client.GetAsync("/main-ABCD1234.js", TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.OK, bundle.StatusCode);
+            Assert.Null(bundle.Headers.CacheControl);
+            // The fallback for client routes, the root and the file itself.
+            foreach (var path in new[] { "/operator", "/", "/index.html" })
+            {
+                var page = await client.GetAsync(path, TestContext.Current.CancellationToken);
+                Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+                Assert.Equal("no-cache", Header(page, "Cache-Control"));
+            }
+        }
+        finally
+        {
+            webRoot.Delete(recursive: true);
+        }
     }
 
     private static string Header(HttpResponseMessage response, string name) =>

@@ -47,7 +47,7 @@ app.UseCookiePolicy(new CookiePolicyOptions { Secure = CookieSecurePolicy.Always
 app.UseExceptionHandler();
 app.UseSecurityHeaders();
 app.UseBodySizeLimit();
-app.UseStaticFiles();
+app.UseStaticFiles(ClientFiles.Options());
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -58,7 +58,7 @@ app.MapReports();
 app.MapAuth();
 app.MapInbox();
 app.Map("/api/{**path}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found."));
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", ClientFiles.Options());
 
 await app.RunAsync();
 return 0;
