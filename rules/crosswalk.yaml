@@ -1,3 +1,9 @@
+# Annex I of Regulation (EU) 2024/2847 mapped to cra-trail checks.
+# coverage: automated = the checks cover the point; partial = they cover part of it;
+# manual = a person attests the point in cra.yml, or marks it not applicable with a reason.
+# refs.osps: OpenSSF OSPS Baseline controls that osps-to-cra.yaml (baseline 2026.08.28) relates to the point.
+# The relation is "relates-to": meeting the control does not mean meeting the point.
+
 version: "2026.10"
 gate:
   - no-kev-without-vex
@@ -72,133 +78,173 @@ checks:
 requirements:
   - id: annex-i/part-i/1
     point: I (1)
-    title: Appropriate level of cybersecurity based on the risks
+    title: Security level appropriate to the risks
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 1
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-SA-03]
   - id: annex-i/part-i/2a
     point: I (2)(a)
-    title: No known exploitable vulnerabilities at release
+    title: No known exploitable vulnerabilities when placed on the market
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(a)
     coverage: automated
     checks: [no-kev-without-vex, no-critical-without-vex]
+    refs:
+      osps: [OSPS-SA-01, OSPS-SA-02, OSPS-VM-04, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-i/2b
     point: I (2)(b)
-    title: Secure by default configuration, with reset to the original state
+    title: Secure default configuration, with a way to reset it
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(b)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-BR-05, OSPS-DO-01, OSPS-LE-01, OSPS-LE-02, OSPS-LE-03, OSPS-QA-01, OSPS-QA-04, OSPS-QA-05, OSPS-SA-01, OSPS-SA-02, OSPS-VM-04, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-i/2c
     point: I (2)(c)
-    title: Vulnerabilities addressed through security updates
+    title: Vulnerabilities can be fixed through security updates
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(c)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-DO-02, OSPS-DO-05, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-i/2d
     point: I (2)(d)
-    title: Protection from unauthorised access
+    title: Access control, and reporting of unauthorised access
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(d)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-AC-01, OSPS-AC-04, OSPS-BR-03, OSPS-BR-04, OSPS-BR-05, OSPS-DO-03, OSPS-GV-04]
   - id: annex-i/part-i/2e
     point: I (2)(e)
-    title: Confidentiality of stored, transmitted or processed data
+    title: Confidentiality of stored, transmitted and processed data
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(e)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-AC-01, OSPS-AC-04, OSPS-BR-03]
   - id: annex-i/part-i/2f
     point: I (2)(f)
     title: Integrity of data, commands, programs and configuration
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(f)
     coverage: partial
     checks: [distribution-signed]
+    refs:
+      osps: [OSPS-AC-01, OSPS-AC-02, OSPS-AC-03, OSPS-AC-04, OSPS-BR-01, OSPS-BR-02, OSPS-BR-03, OSPS-BR-04, OSPS-BR-05, OSPS-LE-01, OSPS-QA-01, OSPS-QA-03, OSPS-QA-04]
   - id: annex-i/part-i/2g
     point: I (2)(g)
-    title: Data minimisation
+    title: Only the data needed for the intended purpose
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(g)
     coverage: manual
     checks: []
   - id: annex-i/part-i/2h
     point: I (2)(h)
-    title: Availability of essential and basic functions
+    title: Essential functions stay available, also after an incident
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(h)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-BR-04, OSPS-BR-05]
   - id: annex-i/part-i/2i
     point: I (2)(i)
-    title: Minimal negative impact on other devices and networks
+    title: Limited impact on services of other devices and networks
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(i)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-BR-03]
   - id: annex-i/part-i/2j
     point: I (2)(j)
-    title: Limited attack surfaces, including external interfaces
+    title: Limited attack surface, external interfaces included
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(j)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-BR-03, OSPS-BR-04, OSPS-BR-05, OSPS-DO-01, OSPS-QA-01, OSPS-SA-03]
   - id: annex-i/part-i/2k
     point: I (2)(k)
-    title: Exploitation mitigation mechanisms
+    title: Exploit mitigation to reduce the impact of an incident
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(k)
     coverage: partial
     checks: [sast-no-high]
+    refs:
+      osps: [OSPS-BR-03, OSPS-DO-01, OSPS-QA-03, OSPS-SA-03]
   - id: annex-i/part-i/2l
     point: I (2)(l)
-    title: Security logging and monitoring, with an opt-out
+    title: Records of security-relevant activity, with an opt-out
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(l)
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-BR-04, OSPS-DO-02, OSPS-GV-02, OSPS-GV-03, OSPS-GV-04]
   - id: annex-i/part-i/2m
     point: I (2)(m)
-    title: Secure removal and transfer of data and settings
+    title: Secure removal of data and settings, and secure transfer
     source: Reg. (EU) 2024/2847, Annex I, Part I, point 2(m)
     coverage: manual
     checks: []
   - id: annex-i/part-ii/1
     point: II (1)
-    title: Components identified, SBOM in a machine-readable format
+    title: Components identified, with a machine-readable SBOM
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 1
     coverage: automated
     checks: [sbom-present, sbom-core-fields]
+    refs:
+      osps: [OSPS-BR-05, OSPS-DO-02, OSPS-DO-06, OSPS-GV-04, OSPS-QA-02, OSPS-VM-01, OSPS-VM-04, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-ii/2
     point: II (2)
     title: Vulnerabilities remediated without delay
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 2
     coverage: partial
     checks: [no-kev-without-vex, no-critical-without-vex]
+    refs:
+      osps: [OSPS-BR-05, OSPS-DO-02, OSPS-GV-04, OSPS-QA-02, OSPS-SA-03, OSPS-VM-01, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-ii/3
     point: II (3)
-    title: Effective and regular security tests and reviews
+    title: Regular and effective security tests and reviews
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 3
     coverage: automated
     checks: [tests-run, sast-present]
+    refs:
+      osps: [OSPS-BR-05, OSPS-GV-02, OSPS-QA-02, OSPS-QA-06, OSPS-VM-01, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-ii/4
     point: II (4)
-    title: Public disclosure of fixed vulnerabilities
+    title: Fixed vulnerabilities disclosed once the update is out
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 4
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-GV-02, OSPS-GV-03, OSPS-VM-04, OSPS-VM-05, OSPS-VM-06]
   - id: annex-i/part-ii/5
     point: II (5)
     title: Coordinated vulnerability disclosure policy
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 5
     coverage: automated
     checks: [cvd-policy-present, security-txt-set]
+    refs:
+      osps: [OSPS-BR-04, OSPS-DO-02, OSPS-GV-04, OSPS-VM-02, OSPS-VM-03]
   - id: annex-i/part-ii/6
     point: II (6)
     title: Contact address for vulnerability reports
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 6
     coverage: automated
     checks: [cvd-contact-set]
+    refs:
+      osps: [OSPS-DO-02, OSPS-DO-05, OSPS-GV-02, OSPS-GV-04, OSPS-VM-01, OSPS-VM-03, OSPS-VM-04]
   - id: annex-i/part-ii/7
     point: II (7)
     title: Secure distribution of updates
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 7
     coverage: automated
     checks: [distribution-signed]
+    refs:
+      osps: [OSPS-VM-01]
   - id: annex-i/part-ii/8
     point: II (8)
-    title: Security updates disseminated without delay and free of charge, with advisories
+    title: Security updates without delay, free of charge, with advisories
     source: Reg. (EU) 2024/2847, Annex I, Part II, point 8
     coverage: manual
     checks: []
+    refs:
+      osps: [OSPS-VM-01]
