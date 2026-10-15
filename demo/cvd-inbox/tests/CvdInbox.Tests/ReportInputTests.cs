@@ -60,6 +60,29 @@ public class ReportInputTests
         Assert.Contains("description", ReportInput.Validate(Report(description: "Steps to reproduce \u202E the bug here"), out _).Keys);
     }
 
+    // Tag characters, zero-width and directional marks, the byte order mark, line and paragraph separators.
+    [Theory]
+    [InlineData("\U000E0041")]
+    [InlineData("\u200B")]
+    [InlineData("\u200E")]
+    [InlineData("\u2060")]
+    [InlineData("\uFEFF")]
+    [InlineData("\u2028")]
+    [InlineData("\u2029")]
+    public void Every_field_refuses_invisible_formatting_characters(string hidden)
+    {
+        Assert.Contains("product", ReportInput.Validate(Report(product: $"Wid{hidden}get"), out _).Keys);
+        Assert.Contains("contact", ReportInput.Validate(Report(contact: $"researcher{hidden}@example.test"), out _).Keys);
+        Assert.Contains("description", ReportInput.Validate(Report(description: $"Steps to reproduce{hidden} the bug here"), out _).Keys);
+    }
+
+    // Emoji sequences and scripts such as Persian need them.
+    [Theory]
+    [InlineData("\u200C")]
+    [InlineData("\u200D")]
+    public void Zero_width_joiners_are_allowed(string joiner) =>
+        Assert.Empty(ReportInput.Validate(Report(product: $"Widget \U0001F469{joiner}\U0001F4BB"), out _));
+
     private static NewReport Report(
         string? product = "Example Product",
         string? version = "1.2.3",

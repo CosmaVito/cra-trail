@@ -126,13 +126,13 @@ describe('ReportForm', () => {
     clickButton(fixture, 'Send report');
     await tick();
     http.expectOne('/api/reports').flush(
-      { title: 'One or more validation errors occurred.', errors: { description: ['Remove control characters and bidirectional formatting characters.'] } },
+      { title: 'One or more validation errors occurred.', errors: { description: ['Remove control characters and invisible formatting characters.'] } },
       { status: 400, statusText: 'Bad Request' },
     );
     await settle(fixture);
 
     const description = element(fixture).querySelector('#description');
-    expect(textOf(fixture, '#description-error')).toBe('Remove control characters and bidirectional formatting characters.');
+    expect(textOf(fixture, '#description-error')).toBe('Remove control characters and invisible formatting characters.');
     expect(description?.getAttribute('aria-invalid')).toBe('true');
     expect(description?.getAttribute('aria-describedby')).toBe('description-hint description-error');
     expect(document.activeElement).toBe(description);

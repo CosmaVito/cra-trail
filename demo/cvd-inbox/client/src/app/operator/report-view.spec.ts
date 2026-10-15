@@ -111,13 +111,13 @@ describe('ReportView', () => {
     clickButton(fixture, 'Add note');
     await tick();
     http.expectOne('/api/inbox/7/notes').flush(
-      { title: 'One or more validation errors occurred.', errors: { text: ['Remove control characters and bidirectional formatting characters.'] } },
+      { title: 'One or more validation errors occurred.', errors: { text: ['Remove control characters and invisible formatting characters.'] } },
       { status: 400, statusText: 'Bad Request' },
     );
     await settle(fixture);
 
     const note = element(fixture).querySelector('#note');
-    expect(textOf(fixture, '#note-error')).toBe('Remove control characters and bidirectional formatting characters.');
+    expect(textOf(fixture, '#note-error')).toBe('Remove control characters and invisible formatting characters.');
     expect(note?.getAttribute('aria-invalid')).toBe('true');
     expect(note?.getAttribute('aria-describedby')).toBe('note-hint note-error');
     expect(document.activeElement).toBe(note);

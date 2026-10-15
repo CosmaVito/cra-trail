@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace CvdInbox.Reports;
 
 public sealed record NewReport(string? Product, string? Version, string? Description, string? Contact, string? Website);
@@ -33,15 +36,31 @@ public static class ReportInput
         var problem = text.Length == 0 ? "This field is required."
             : text.Length < min ? $"Use at least {min} characters."
             : text.Length > max ? $"Use at most {max} characters."
-            : HasForbiddenCharacters(text, multiline) ? "Remove control characters and bidirectional formatting characters."
+            : HasForbiddenCharacters(text, multiline) ? "Remove control characters and invisible formatting characters."
             : null;
         if (problem is not null)
             errors[name] = [problem];
         return text;
     }
 
-    // Control characters and bidi overrides can hide or reorder text on the operator's screen (Trojan Source).
-    public static bool HasForbiddenCharacters(string text, bool multiline) =>
-        text.Any(c => (char.IsControl(c) && !(multiline && c is '\n' or '\r' or '\t'))
-            || c is >= '\u202A' and <= '\u202E' or >= '\u2066' and <= '\u2069');
+    // Control characters, bidi overrides and other invisible characters (zero-width spaces, tag characters, Unicode line
+    // and paragraph separators) can hide or reorder text on the operator's screen (Trojan Source). Runes, not chars,
+    // so characters outside the Basic Multilingual Plane, such as the tag characters, are checked too.
+    public static bool HasForbiddenCharacters(string text, bool multiline)
+    {
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var forbidden = Rune.GetUnicodeCategory(rune) switch
+            {
+                UnicodeCategory.Control => !(multiline && rune.Value is '\n' or '\r' or '\t'),
+                // Zero-width non-joiner and joiner stay: emoji sequences and scripts such as Persian need them.
+                UnicodeCategory.Format => rune.Value is not (0x200C or 0x200D),
+                UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator => true,
+                _ => false,
+            };
+            if (forbidden)
+                return true;
+        }
+        return false;
+    }
 }
