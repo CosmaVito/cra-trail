@@ -4,6 +4,7 @@ using CvdInbox;
 using CvdInbox.Data;
 using CvdInbox.Disclosure;
 using CvdInbox.Hosting;
+using CvdInbox.Inbox;
 using CvdInbox.Operators;
 using CvdInbox.Reports;
 using CvdInbox.Security;
@@ -53,6 +54,7 @@ app.UseRateLimiter();
 app.MapDisclosure();
 app.MapReports();
 app.MapAuth();
+app.MapInbox();
 app.Map("/api/{**path}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found."));
 app.MapFallbackToFile("index.html");
 

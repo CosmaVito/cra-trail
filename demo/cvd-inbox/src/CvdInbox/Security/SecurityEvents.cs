@@ -1,3 +1,5 @@
+using CvdInbox.Data;
+
 namespace CvdInbox.Security;
 
 // Security-relevant activity (Annex I, Part I, 2(l)), written to the log under one category.
@@ -36,4 +38,13 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1104, Level = LogLevel.Warning, Message = "Request to {Path} from {ClientAddress} refused: missing or invalid request token.")]
     public partial void RequestTokenRejected(string path, string? clientAddress);
+
+    [LoggerMessage(EventId = 1201, Level = LogLevel.Information, Message = "Report {ReportId} moved from {From} to {To} by {OperatorName}.")]
+    public partial void StatusChanged(int reportId, ReportStatus from, ReportStatus to, string operatorName);
+
+    [LoggerMessage(EventId = 1202, Level = LogLevel.Information, Message = "Note added to report {ReportId} by {OperatorName}.")]
+    public partial void NoteAdded(int reportId, string operatorName);
+
+    [LoggerMessage(EventId = 1203, Level = LogLevel.Warning, Message = "Report {ReportId} and its notes deleted for good by {OperatorName}.")]
+    public partial void ReportDeleted(int reportId, string operatorName);
 }
