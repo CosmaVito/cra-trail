@@ -34,8 +34,10 @@ test('a researcher reports, an operator triages, the researcher sees the change'
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
+  const reportLink = page.getByRole('link', { name: 'Example Product' });
+  await expect(reportLink).toBeVisible();
   await expectNoAccessibilityViolations(page);
-  await page.getByRole('link', { name: 'Example Product' }).click();
+  await reportLink.click();
 
   await expect(page.getByTestId('description')).toHaveText('Stored XSS in the comment field of the admin page.');
   await expectNoAccessibilityViolations(page);

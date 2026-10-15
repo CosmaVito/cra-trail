@@ -1,8 +1,7 @@
 // Starts CVD Inbox for the end-to-end tests: a fresh data folder, one operator, the built client in wwwroot.
 // Node instead of bash, so it runs the same way on Windows and Linux.
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { operator, port } from './settings.mjs';
@@ -18,25 +17,52 @@ if (!existsSync(built)) {
 rmSync(join(project, 'wwwroot'), { recursive: true, force: true });
 cpSync(built, join(project, 'wwwroot'), { recursive: true });
 
+// Playwright force-kills this process on Windows, so exit handlers do not always run. A fixed folder in the
+// ignored test-results directory is wiped at every start instead of leaking into the system temp folder.
+const dataPath = join(client, 'test-results/e2e-data');
+rmSync(dataPath, { recursive: true, force: true });
+mkdirSync(dataPath, { recursive: true });
+const cleanUp = () => rmSync(dataPath, { recursive: true, force: true });
+
 const env = {
   ...process.env,
   ASPNETCORE_ENVIRONMENT: 'Production',
   ASPNETCORE_URLS: `http://localhost:${port}`,
-  Inbox__DataPath: mkdtempSync(join(tmpdir(), 'cvd-inbox-e2e-')),
+  Inbox__DataPath: dataPath,
   Disclosure__PublicOrigin: 'https://inbox.example.test',
   Disclosure__Contact__0: 'mailto:security@example.test',
   Disclosure__Expires: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
   Logging__Console__FormatterName: 'simple',
 };
-const run = ['run', '--project', project, '-c', 'Release', '--no-launch-profile', '--'];
 
-const created = spawnSync('dotnet', [...run, 'create-operator', operator.name, '--password-stdin'], {
+function fail(message, code = 1) {
+  console.error(message);
+  cleanUp();
+  process.exit(code);
+}
+
+// Build once and start the app itself, not `dotnet run`: signals then reach the app and not a wrapper process.
+const build = spawnSync('dotnet', ['build', project, '-c', 'Release', '--nologo', '-v', 'q'], { stdio: 'inherit' });
+if (build.error) fail(`Cannot start dotnet: ${build.error.message}`);
+if (build.status !== 0) fail('dotnet build failed', build.status ?? 1);
+
+const output = join(project, 'bin/Release');
+const dll = join(output, readdirSync(output)[0], 'cvd-inbox.dll');
+
+const created = spawnSync('dotnet', [dll, 'create-operator', operator.name, '--password-stdin'], {
+  cwd: project,
   env,
   input: `${operator.password}\n`,
   stdio: ['pipe', 'inherit', 'inherit'],
 });
-if (created.status !== 0) process.exit(created.status ?? 1);
+if (created.error) fail(`Cannot start dotnet: ${created.error.message}`);
+if (created.status !== 0) fail('create-operator failed', created.status ?? 1);
 
-const server = spawn('dotnet', run, { env, stdio: 'inherit' });
-server.on('exit', (code) => process.exit(code ?? 0));
+const server = spawn('dotnet', [dll], { cwd: project, env, stdio: 'inherit' });
+server.on('error', (error) => fail(`Cannot start dotnet: ${error.message}`));
+// Remove the data folder only after the app has exited, so the database files are not locked.
+server.on('exit', (code) => {
+  cleanUp();
+  process.exit(code ?? 0);
+});
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.kill(signal));
