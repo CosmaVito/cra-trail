@@ -44,4 +44,19 @@ describe('Session', () => {
 
     expect(session.operator()).toBe('alice');
   });
+
+  it('treats a 401 on sign-out as signed out and still fetches a new request token', async () => {
+    const loading = session.ensureLoaded();
+    http.expectOne('/api/auth/session').flush({ operator: 'alice' });
+    await loading;
+
+    const signingOut = session.signOut();
+    // The session cookie has expired, so the server no longer knows the operator.
+    http.expectOne('/api/auth/sign-out').flush(null, { status: 401, statusText: 'Unauthorized' });
+    await tick();
+    http.expectOne('/api/auth/session').flush({ operator: null });
+    await signingOut;
+
+    expect(session.operator()).toBeNull();
+  });
 });

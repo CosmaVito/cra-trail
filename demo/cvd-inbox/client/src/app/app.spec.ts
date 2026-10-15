@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { element, textOf } from '../testing/dom';
+import { provideRouter, Router } from '@angular/router';
+import { clickButton, element, settle, textOf, tick } from '../testing/dom';
 import { App } from './app';
 import { Session } from './operator/session';
 
@@ -45,5 +45,25 @@ describe('App', () => {
     await fixture.whenStable();
 
     expect(textOf(fixture, '.signed-in')).toContain('Signed in as alice');
+  });
+
+  it('goes to the sign-in page after signing out, also when the session has expired', async () => {
+    const http = TestBed.inject(HttpTestingController);
+    const loading = TestBed.inject(Session).ensureLoaded();
+    http.expectOne('/api/auth/session').flush({ operator: 'alice' });
+    await loading;
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    clickButton(fixture, 'Sign out');
+    await tick();
+    http.expectOne('/api/auth/sign-out').flush(null, { status: 401, statusText: 'Unauthorized' });
+    await tick();
+    http.expectOne('/api/auth/session').flush({ operator: null });
+    await settle(fixture);
+
+    expect(navigate).toHaveBeenCalledWith('/operator/sign-in');
+    expect(element(fixture).querySelector('.signed-in')).toBeNull();
   });
 });

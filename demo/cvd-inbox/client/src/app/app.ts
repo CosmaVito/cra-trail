@@ -13,7 +13,11 @@ export class App {
   private readonly router = inject(Router);
 
   protected async signOut(): Promise<void> {
-    await this.session.signOut();
-    await this.router.navigateByUrl('/operator/sign-in');
+    try {
+      await this.session.signOut();
+    } finally {
+      // Whatever the server answered, the operator's pages must not stay on screen.
+      await this.router.navigateByUrl('/operator/sign-in');
+    }
   }
 }

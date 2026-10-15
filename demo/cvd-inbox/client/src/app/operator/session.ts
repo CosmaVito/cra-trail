@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { InboxApi } from '../api/inbox-api';
 
@@ -21,10 +22,15 @@ export class Session {
     await this.refresh();
   }
 
+  /** A 401 means the session cookie had expired already: the operator is signed out either way. */
   async signOut(): Promise<void> {
     try {
       await this.api.signOut();
+    } catch (error) {
+      if (!(error instanceof HttpErrorResponse && error.status === 401)) throw error;
     } finally {
+      this.current.set(null);
+      // The request token is bound to the user, so the signed-out browser needs a new one.
       await this.refresh();
     }
   }
