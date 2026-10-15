@@ -7,6 +7,7 @@ using CvdInbox.Hosting;
 using CvdInbox.Inbox;
 using CvdInbox.Operators;
 using CvdInbox.Reports;
+using CvdInbox.Retention;
 using CvdInbox.Security;
 
 // "cvd-inbox create-operator <name>" runs a command instead of the server. The check comes after Build(),
@@ -27,6 +28,7 @@ builder.Services.AddSingleton<SecurityEvents>();
 builder.Services.AddInboxRateLimits();
 builder.Services.AddOperators();
 builder.Services.AddOperatorSignIn();
+builder.Services.AddRetention();
 
 // Not "await using": RunAsync disposes the app. A failure before RunAsync, such as invalid Inbox settings, must leave
 // the host undisposed, because WebApplicationFactory still waits on it from another thread to report that failure.

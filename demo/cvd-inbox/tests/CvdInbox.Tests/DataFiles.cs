@@ -9,11 +9,20 @@ internal static class DataFiles
     public static bool Contain(string dataDirectory, string marker)
     {
         var needle = Encoding.UTF8.GetBytes(marker);
-        foreach (var path in Directory.EnumerateFiles(dataDirectory, DataSetup.DatabaseFile + "*"))
+        // The log first, then the database: if SQLite checkpoints and deletes the log in between, its bytes are in the database already.
+        foreach (var path in Directory.EnumerateFiles(dataDirectory, DataSetup.DatabaseFile + "*").OrderByDescending(p => p, StringComparer.Ordinal))
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var copy = new MemoryStream();
-            stream.CopyTo(copy);
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                stream.CopyTo(copy);
+            }
+            catch (FileNotFoundException)
+            {
+                // SQLite deletes the log when its last connection closes; a file that is gone holds no bytes.
+                continue;
+            }
             if (copy.ToArray().AsSpan().IndexOf(needle) >= 0)
                 return true;
         }

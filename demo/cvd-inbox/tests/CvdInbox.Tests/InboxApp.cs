@@ -20,8 +20,12 @@ public sealed class InboxApp : WebApplicationFactory<Program>
 
     private readonly Dictionary<string, string?> settings;
 
-    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null)
+    private readonly bool retentionSweep;
+
+    // retentionSweep: false removes the background sweep, for tests that call the eraser themselves.
+    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = true)
     {
+        this.retentionSweep = retentionSweep;
         DataDirectory = Directory.CreateTempSubdirectory("cvd-inbox-").FullName;
         settings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
@@ -83,6 +87,8 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         {
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
+            if (!retentionSweep)
+                services.Remove(services.Single(d => d.ImplementationType == typeof(CvdInbox.Retention.RetentionService)));
         });
     }
 

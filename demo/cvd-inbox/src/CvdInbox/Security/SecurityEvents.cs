@@ -50,4 +50,7 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1204, Level = LogLevel.Warning, Message = "The write-ahead log could not be truncated after a deletion; it will be retried.")]
     public partial void WalTruncateIncomplete();
+
+    [LoggerMessage(EventId = 1301, Level = LogLevel.Information, Message = "Contact details erased from {Count} closed reports.")]
+    public partial void ContactsErased(int count);
 }
