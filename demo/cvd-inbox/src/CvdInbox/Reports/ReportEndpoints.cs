@@ -1,4 +1,5 @@
 using CvdInbox.Data;
+using CvdInbox.Hosting;
 using CvdInbox.Security;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,9 +15,9 @@ public static class ReportEndpoints
 {
     public static IEndpointRouteBuilder MapReports(this IEndpointRouteBuilder routes)
     {
-        routes.MapPost("/api/reports", SubmitAsync);
+        routes.MapPost("/api/reports", SubmitAsync).RequireRateLimiting(RateLimits.Reports);
         // The code travels in the body, never in the URL, so it does not end up in proxy logs.
-        routes.MapPost("/api/reports/status", StatusAsync);
+        routes.MapPost("/api/reports/status", StatusAsync).RequireRateLimiting(RateLimits.Lookups);
         return routes;
     }
 

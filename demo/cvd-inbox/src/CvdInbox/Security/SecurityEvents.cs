@@ -15,4 +15,7 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1102, Level = LogLevel.Warning, Message = "Report form trap filled from {ClientAddress}; the report was discarded.")]
     public partial void TrapFilled(string? clientAddress);
+
+    [LoggerMessage(EventId = 1103, Level = LogLevel.Warning, Message = "Rate limit {Policy} reached by {ClientAddress}.")]
+    public partial void RateLimited(string policy, string? clientAddress);
 }

@@ -19,16 +19,19 @@ builder.Services.AddInboxOptions();
 builder.Services.AddInboxData();
 builder.Services.AddDisclosure();
 builder.Services.AddSingleton<SecurityEvents>();
+builder.Services.AddInboxRateLimits();
 
 await using var app = builder.Build();
 
 await app.Services.PrepareDatabaseAsync();
 
+app.UseTrustedProxies();
 app.UseExceptionHandler();
 app.UseSecurityHeaders();
 app.UseBodySizeLimit();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 
 app.MapDisclosure();
 app.MapReports();
