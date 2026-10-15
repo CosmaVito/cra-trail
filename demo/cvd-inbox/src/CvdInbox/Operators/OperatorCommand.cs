@@ -35,7 +35,9 @@ public static class OperatorCommand
         }
 
         services.GetRequiredService<SecurityEvents>().OperatorCreated(created.Name!);
-        await output.WriteLineAsync($"Created operator {created.Name}.");
+        // A relative Inbox:DataPath starts at the content root, which is the working directory.
+        // The path shows which database got the operator.
+        await output.WriteLineAsync($"Created operator {created.Name} in {services.DatabasePath()}.");
         if (!fromStdin)
         {
             await output.WriteLineAsync($"Password: {password}");

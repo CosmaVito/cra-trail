@@ -1,3 +1,4 @@
+using CvdInbox.Data;
 using CvdInbox.Operators;
 
 namespace CvdInbox.Tests;
@@ -12,7 +13,8 @@ public class OperatorCommandTests
         var (exit, output, _) = await RunAsync(app, ["create-operator", "alice", "--password-stdin"], InboxApp.AlicePassword + "\n");
 
         Assert.Equal(0, exit);
-        Assert.Equal("Created operator alice.", output.Trim());
+        // The path tells which database got the operator: a relative data path depends on the working directory.
+        Assert.Equal($"Created operator alice in {Path.Combine(app.DataDirectory, DataSetup.DatabaseFile)}.", output.Trim());
         Assert.Equal(SignInOutcome.Succeeded, (await app.CheckPasswordAsync("alice", InboxApp.AlicePassword)).Outcome);
         Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1005);
     }

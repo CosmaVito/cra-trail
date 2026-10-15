@@ -13,17 +13,21 @@ public static class DataSetup
         services.AddSingleton<SqliteHardening>();
         services.AddDbContext<InboxDb>((provider, options) =>
         {
-            var inbox = provider.GetRequiredService<IOptions<InboxOptions>>().Value;
-            var environment = provider.GetRequiredService<IHostEnvironment>();
             var connection = new SqliteConnectionStringBuilder
             {
-                DataSource = Path.Combine(inbox.DataDirectory(environment), DatabaseFile),
+                DataSource = provider.DatabasePath(),
                 Mode = SqliteOpenMode.ReadWriteCreate,
             };
             options.UseSqlite(connection.ToString())
                 .AddInterceptors(provider.GetRequiredService<SqliteHardening>());
         });
         return services;
+    }
+
+    public static string DatabasePath(this IServiceProvider services)
+    {
+        var inbox = services.GetRequiredService<IOptions<InboxOptions>>().Value;
+        return Path.Combine(inbox.DataDirectory(services.GetRequiredService<IHostEnvironment>()), DatabaseFile);
     }
 
     public static async Task PrepareDatabaseAsync(this IServiceProvider services)
