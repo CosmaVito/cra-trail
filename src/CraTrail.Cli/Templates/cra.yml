@@ -1,0 +1,26 @@
+# cra-trail configuration. Changes go through pull request review like code.
+
+product:
+  name: Example Product
+  purl: pkg:github/owner/repository
+  # Last day of the support period (CRA Art. 13(8)).
+  support-end: 2031-12-31
+  # Where security researchers report vulnerabilities.
+  cvd-contact: security@example.org
+  security-txt: https://example.org/.well-known/security.txt
+
+# Annex I points covered by a document in this repository, for example:
+#   annex-i/part-i/1: docs/risk-assessment.md
+attested: {}
+
+# Annex I points that do not apply to this product, with the reason, for example:
+#   annex-i/part-i/2i: The product has no network interface.
+not-applicable: {}
+
+gate:
+  # Block findings at or above this CVSS score that have no VEX statement.
+  max-cvss-without-vex: 9.0
+  # Block findings listed in the CISA KEV catalogue that have no VEX statement.
+  block-kev-without-vex: true
+  # Also block when the SBOM misses BSI TR-03183-2 fields.
+  require-bsi: false

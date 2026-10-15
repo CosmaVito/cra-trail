@@ -1,1 +1,3 @@
-Console.WriteLine("cra-trail");
+using CraTrail.Cli;
+
+return CliApp.Run(args, CliIO.FromProcess());
