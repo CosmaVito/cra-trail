@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CvdInbox/CvdInbox.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CvdInbox.Tests/CvdInbox.Tests.csproj" />
+  </Folder>
+</Solution>

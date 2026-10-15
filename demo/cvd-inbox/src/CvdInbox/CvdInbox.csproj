@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>cvd-inbox</AssemblyName>
+    <RootNamespace>CvdInbox</RootNamespace>
+    <Version>0.1.0</Version>
+    <IsPackable>false</IsPackable>
+    <!-- Keeps the linux-x64 restore in packages.lock.json, so the release publish does not change it. -->
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+</Project>
