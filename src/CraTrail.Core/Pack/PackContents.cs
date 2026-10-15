@@ -46,6 +46,16 @@ public sealed class PackContents
     public static PackContents Create(PackManifest manifest, IReadOnlyDictionary<string, byte[]> files) =>
         new(manifest, CraTrailJson.Serialize(manifest), files);
 
+    public static PackContents FromVerified(VerificationResult result, IReadOnlyDictionary<string, byte[]> entries)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(entries);
+        if (!result.Ok || result.Manifest is null)
+            throw new PackFormatException("The pack did not pass verification.");
+        var files = result.Manifest.Files.ToDictionary(f => f.Path, f => entries[f.Path], StringComparer.Ordinal);
+        return new PackContents(result.Manifest, entries[PackManifest.FileName], files);
+    }
+
     public IEnumerable<PackFile> FilesOfKind(string kind) => Manifest.Files.Where(f => f.Kind == kind);
 
     public EvaluationResult? ReadEvaluation() =>
