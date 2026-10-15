@@ -1,0 +1,24 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <p class="brand"><a routerLink="/">CVD Inbox</a></p>
+  <nav aria-label="Main">
+    <ul>
+      <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Report</a></li>
+      <li><a routerLink="/status" routerLinkActive="active" ariaCurrentWhenActive="page">Check status</a></li>
+      <li><a routerLink="/security-policy" routerLinkActive="active" ariaCurrentWhenActive="page">Security policy</a></li>
+      <li><a routerLink="/operator" routerLinkActive="active" ariaCurrentWhenActive="page">Operator</a></li>
+    </ul>
+  </nav>
+  @if (session.operator(); as name) {
+    <p class="signed-in">
+      Signed in as {{ name }}
+      <button type="button" class="secondary" (click)="signOut()">Sign out</button>
+    </p>
+  }
+</header>
+<main id="main" tabindex="-1">
+  <router-outlet />
+</main>
+<footer class="site-footer">
+  <p>CVD Inbox is the example app of cra-trail. It is not meant for production use.</p>
+</footer>
