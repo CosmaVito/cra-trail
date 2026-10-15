@@ -76,4 +76,67 @@ describe('ReportForm', () => {
 
     expect(textOf(fixture, '[role=alert]')).toContain('Too many attempts');
   });
+
+  it('refuses a product that is only spaces', async () => {
+    typeInto(fixture, 'product', '    ');
+    typeInto(fixture, 'version', '1.2.3');
+    typeInto(fixture, 'description', 'Stored XSS in the comment field of the admin page.');
+    clickButton(fixture, 'Send report');
+    await fixture.whenStable();
+
+    expect(textOf(fixture, '#product-error')).toBe('Enter the name of the product.');
+    http.expectNone('/api/reports');
+  });
+
+  it('counts the description without its surrounding spaces', async () => {
+    fillIn();
+    typeInto(fixture, 'description', 'x' + ' '.repeat(25));
+    clickButton(fixture, 'Send report');
+    await fixture.whenStable();
+
+    expect(textOf(fixture, '#description-error')).toBe('Write at least 20 characters.');
+    http.expectNone('/api/reports');
+  });
+
+  it('moves focus to the first invalid field after an invalid submit', async () => {
+    document.body.appendChild(element(fixture));
+    clickButton(fixture, 'Send report');
+    await fixture.whenStable();
+
+    expect(document.activeElement?.id).toBe('product');
+    element(fixture).remove();
+  });
+
+  it('moves focus to the receipt heading after a successful submit', async () => {
+    document.body.appendChild(element(fixture));
+    fillIn();
+    clickButton(fixture, 'Send report');
+    await tick();
+    http.expectOne('/api/reports').flush({ receipt: '0123-4567-89ab-cdef-0123-4567-89ab-cdef' });
+    await settle(fixture);
+
+    expect(document.activeElement?.id).toBe('receipt-heading');
+    expect(textOf(fixture, '#receipt-heading')).toBe('Report received');
+    element(fixture).remove();
+  });
+
+  it('shows a server field error next to its field and focuses it', async () => {
+    document.body.appendChild(element(fixture));
+    fillIn();
+    clickButton(fixture, 'Send report');
+    await tick();
+    http.expectOne('/api/reports').flush(
+      { title: 'One or more validation errors occurred.', errors: { description: ['Remove control characters and bidirectional formatting characters.'] } },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await settle(fixture);
+
+    const description = element(fixture).querySelector('#description');
+    expect(textOf(fixture, '#description-error')).toBe('Remove control characters and bidirectional formatting characters.');
+    expect(description?.getAttribute('aria-invalid')).toBe('true');
+    expect(description?.getAttribute('aria-describedby')).toBe('description-hint description-error');
+    expect(document.activeElement).toBe(description);
+    expect(element(fixture).querySelector('[role=alert]')).toBeNull();
+    element(fixture).remove();
+  });
 });

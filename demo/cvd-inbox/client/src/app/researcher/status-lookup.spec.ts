@@ -51,4 +51,19 @@ describe('StatusLookup', () => {
     expect(textOf(fixture, '#receipt-error')).toBe('Receipt codes have 32 letters and digits, from 0-9 and a-f.');
     http.expectNone('/api/reports/status');
   });
+
+  it('shows a server field error next to the receipt field', async () => {
+    typeInto(fixture, 'receipt', '0123456789abcdef0123456789abcdef');
+    clickButton(fixture, 'Check status');
+    await tick();
+    http.expectOne('/api/reports/status').flush(
+      { title: 'One or more validation errors occurred.', errors: { receipt: ['Enter a valid receipt code.'] } },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await settle(fixture);
+
+    expect(textOf(fixture, '#receipt-error')).toBe('Enter a valid receipt code.');
+    expect(fixture.nativeElement.querySelector('#receipt').getAttribute('aria-invalid')).toBe('true');
+    expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
+  });
 });

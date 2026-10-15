@@ -10,3 +10,15 @@ export function describeFailure(error: unknown): string {
   }
   return 'Something went wrong on the server. Try again later.';
 }
+
+/** The per-field messages of a 400 validation problem, or null when the failure is anything else. */
+export function fieldProblems(error: unknown): Record<string, string> | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 400) return null;
+  const errors: unknown = error.error?.errors;
+  if (typeof errors !== 'object' || errors === null) return null;
+  const found: Record<string, string> = {};
+  for (const [key, messages] of Object.entries(errors)) {
+    if (Array.isArray(messages) && typeof messages[0] === 'string') found[key.toLowerCase()] = messages[0];
+  }
+  return Object.keys(found).length ? found : null;
+}

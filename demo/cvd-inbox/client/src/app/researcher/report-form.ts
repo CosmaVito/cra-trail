@@ -1,8 +1,10 @@
 import { Component, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
-import { FormField, FormRoot, form, maxLength, minLength, required } from '@angular/forms/signals';
+import { FormField, FormRoot, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { InboxApi } from '../api/inbox-api';
 import { describeFailure } from '../api/problem';
+import { serverFieldErrors } from '../forms/server-errors';
+import { trimmedLength } from '../forms/trimmed';
 import { visibleError } from '../forms/visible-error';
 
 @Component({
@@ -22,14 +24,14 @@ export class ReportForm {
   protected readonly reportForm = form(
     this.model,
     (path) => {
-      required(path.product, { message: 'Enter the name of the product.' });
-      maxLength(path.product, 100, { message: 'Use at most 100 characters.' });
-      required(path.version, { message: 'Enter the version you tested.' });
-      maxLength(path.version, 50, { message: 'Use at most 50 characters.' });
-      required(path.description, { message: 'Describe the vulnerability.' });
-      minLength(path.description, 20, { message: 'Write at least 20 characters.' });
-      maxLength(path.description, 20000, { message: 'Use at most 20,000 characters.' });
-      maxLength(path.contact, 200, { message: 'Use at most 200 characters.' });
+      trimmedLength(path.product, { required: 'Enter the name of the product.', max: [100, 'Use at most 100 characters.'] });
+      trimmedLength(path.version, { required: 'Enter the version you tested.', max: [50, 'Use at most 50 characters.'] });
+      trimmedLength(path.description, {
+        required: 'Describe the vulnerability.',
+        min: [20, 'Write at least 20 characters.'],
+        max: [20000, 'Use at most 20,000 characters.'],
+      });
+      trimmedLength(path.contact, { max: [200, 'Use at most 200 characters.'] });
     },
     {
       submission: {
@@ -40,8 +42,16 @@ export class ReportForm {
             this.receipt.set(receipt);
             afterNextRender(() => this.receiptHeading()?.nativeElement.focus(), { injector: this.injector });
           } catch (error) {
+            const fieldErrors = serverFieldErrors(error, {
+              product: field.product,
+              version: field.version,
+              description: field.description,
+              contact: field.contact,
+            });
+            if (fieldErrors) return fieldErrors;
             this.failure.set(describeFailure(error));
           }
+          return undefined;
         },
         onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
       },

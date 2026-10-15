@@ -5,6 +5,7 @@ import { FormField, FormRoot, form, pattern, required } from '@angular/forms/sig
 import { InboxApi } from '../api/inbox-api';
 import { ReportStatusView, statusLabels } from '../api/models';
 import { describeFailure } from '../api/problem';
+import { serverFieldErrors } from '../forms/server-errors';
 import { visibleError } from '../forms/visible-error';
 
 @Component({
@@ -36,12 +37,15 @@ export class StatusLookup {
           try {
             this.result.set(await this.api.lookUpStatus(field().value().receipt));
           } catch (error) {
+            const fieldErrors = serverFieldErrors(error, { receipt: field.receipt });
+            if (fieldErrors) return fieldErrors;
             this.failure.set(
               error instanceof HttpErrorResponse && error.status === 404
                 ? 'No report matches this receipt code. Check it and try again.'
                 : describeFailure(error),
             );
           }
+          return undefined;
         },
         onInvalid: (field) => field().errorSummary()[0]?.fieldTree().focusBoundControl(),
       },
