@@ -135,15 +135,17 @@ public class InboxEndpointTests
         var id = await app.AddReportAsync(report);
         var client = await Browser.SignedInAsync(app);
         (await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "zz-note-marker-4711" }, Ct)).EnsureSuccessStatusCode();
+        string[] markers = ["zz-description-marker-4711", "zz-contact-marker-4711", "zz-note-marker-4711"];
         // The check can see the data before the deletion.
-        Assert.True(DataFiles.Contain(app.DataDirectory, "zz-note-marker-4711"));
+        foreach (var marker in markers)
+            Assert.True(DataFiles.Contain(app.DataDirectory, marker), marker);
 
         var deleted = await client.DeleteAsync($"/api/inbox/{id}", Ct);
 
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/inbox/{id}", Ct)).StatusCode);
         Assert.Equal(0, await app.WithDbAsync(db => db.Notes.CountAsync()));
-        foreach (var marker in new[] { "zz-description-marker-4711", "zz-contact-marker-4711", "zz-note-marker-4711" })
+        foreach (var marker in markers)
             Assert.False(DataFiles.Contain(app.DataDirectory, marker), marker);
         Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1203);
         // Another test clearing the connection pools can checkpoint the log too; the bytes alone would hide a failed truncate.
@@ -182,5 +184,41 @@ public class InboxEndpointTests
 
         Assert.True(await app.WithDbAsync(db => db.TruncateWalAsync(Ct)));
         Assert.False(DataFiles.Contain(app.DataDirectory, "zz-contact-marker-4711"));
+    }
+
+    [Fact]
+    public async Task A_deletion_is_recorded_and_the_write_ahead_log_truncated_even_when_the_client_goes_away()
+    {
+        await using var app = new InboxApp();
+        var id = await app.AddReportAsync(TestData.Report(app.Time.GetUtcNow().UtcDateTime));
+        var client = await Browser.SignedInAsync(app);
+        var readerSettings = new SqliteConnectionStringBuilder { DataSource = Path.Combine(app.DataDirectory, DataSetup.DatabaseFile), Pooling = false };
+
+        await using (var reader = new SqliteConnection(readerSettings.ToString()))
+        {
+            await reader.OpenAsync(Ct);
+            await using (var begin = reader.CreateCommand())
+            {
+                begin.CommandText = "BEGIN; SELECT COUNT(*) FROM Reports;";
+                await begin.ExecuteScalarAsync(Ct);
+            }
+
+            // The open reader keeps the truncate retrying for a while after the delete commits. The client gives up in that window.
+            using var leaving = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            var deleting = client.DeleteAsync($"/api/inbox/{id}", leaving.Token);
+            while (!deleting.IsCompleted && await app.WithDbAsync(db => db.Reports.AnyAsync(r => r.Id == id, Ct)))
+                await Task.Delay(5, Ct);
+            await leaving.CancelAsync();
+            // Cancelled, or already answered if the truncate was quicker than this loop.
+            await Record.ExceptionAsync(() => deleting);
+
+            // The server goes on after the client has left: wait for the end of its truncate.
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (!app.SecurityEvents().Any(e => e.Id.Id == 1204) && DateTime.UtcNow < deadline)
+                await Task.Delay(20, Ct);
+            Assert.False(await app.WithDbAsync(db => db.Reports.AnyAsync(r => r.Id == id, Ct)));
+            Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1203);
+            Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1204);
+        }
     }
 }

@@ -114,10 +114,11 @@ public static class InboxEndpoints
         var deleted = await db.Reports.Where(r => r.Id == id).ExecuteDeleteAsync(cancellationToken);
         if (deleted == 0)
             return NoSuchReport();
-        // The delete has committed either way. If a reader keeps the log from being truncated, it is logged and retried later.
-        if (!await db.TruncateWalAsync(cancellationToken))
-            events.WalTruncateIncomplete();
+        // The delete has committed, so the event and the truncate of the write-ahead log happen even if the client has
+        // gone away meanwhile. If a reader keeps the log from being truncated, that is recorded too and retried later.
         events.ReportDeleted(id, user.Identity!.Name!);
+        if (!await db.TruncateWalAsync(CancellationToken.None))
+            events.WalTruncateIncomplete();
         return Results.NoContent();
     }
 

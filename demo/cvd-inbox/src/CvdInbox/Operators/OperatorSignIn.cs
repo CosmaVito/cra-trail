@@ -121,7 +121,8 @@ public static class OperatorSignIn
         }
 
         // The name field is logged only when it names an operator: people type passwords there too.
-        var attempted = await accounts.ExistingNameAsync(request.Name, cancellationToken) ?? UnknownName;
+        // The failure is already counted, so the lookup for the event does not stop if the client goes away.
+        var attempted = await accounts.ExistingNameAsync(request.Name, CancellationToken.None) ?? UnknownName;
         if (check.Outcome == SignInOutcome.LockedOut)
             events.LockedOut(attempted, client);
         else
