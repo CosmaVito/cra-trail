@@ -4,6 +4,8 @@ using CvdInbox;
 using CvdInbox.Data;
 using CvdInbox.Disclosure;
 using CvdInbox.Hosting;
+using CvdInbox.Reports;
+using CvdInbox.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,7 @@ builder.Services.ConfigureHttpJsonOptions(json =>
 builder.Services.AddInboxOptions();
 builder.Services.AddInboxData();
 builder.Services.AddDisclosure();
+builder.Services.AddSingleton<SecurityEvents>();
 
 await using var app = builder.Build();
 
@@ -28,6 +31,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.MapDisclosure();
+app.MapReports();
 app.Map("/api/{**path}", () => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found."));
 app.MapFallbackToFile("index.html");
 

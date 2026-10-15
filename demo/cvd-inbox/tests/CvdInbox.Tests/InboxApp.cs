@@ -4,12 +4,14 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
 
 namespace CvdInbox.Tests;
 
-// One app per test: its own data folder and a fake clock. Settings go through UseSetting, which
-// minimal hosting reads before Program.cs builds the app.
+// One app per test: its own data folder, a fake clock and captured logs. Settings go through UseSetting,
+// which minimal hosting reads before Program.cs builds the app.
 public sealed class InboxApp : WebApplicationFactory<Program>
 {
     private readonly Dictionary<string, string?> settings;
@@ -32,8 +34,18 @@ public sealed class InboxApp : WebApplicationFactory<Program>
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 15, 9, 0, 0, TimeSpan.Zero));
 
-    public HttpClient CreateBrowser() =>
-        CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+    public HttpClient CreateBrowser(string? peer = null)
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+        if (peer is not null)
+            client.DefaultRequestHeaders.Add(TestPeerAddress.Header, peer);
+        return client;
+    }
+
+    public IReadOnlyList<FakeLogRecord> Logs() => Services.GetFakeLogCollector().GetSnapshot();
+
+    public IReadOnlyList<FakeLogRecord> SecurityEvents() =>
+        [.. Logs().Where(record => record.Category == CvdInbox.Security.SecurityEvents.Category)];
 
     public async Task<T> InScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
     {
@@ -56,7 +68,12 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         builder.UseEnvironment("Production");
         foreach (var (key, value) in settings)
             builder.UseSetting(key, value);
-        builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(Time));
+        builder.ConfigureLogging(logging => logging.AddFakeLogging());
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(Time);
+            services.AddSingleton<IStartupFilter, TestPeerAddress>();
+        });
     }
 
     public override async ValueTask DisposeAsync()
