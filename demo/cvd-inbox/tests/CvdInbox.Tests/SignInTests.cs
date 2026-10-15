@@ -9,6 +9,7 @@ namespace CvdInbox.Tests;
 public class SignInTests
 {
     private const string WrongPassword = "wrong password, long enough";
+    private const string TrustedProxy = "10.0.0.1";
 
     [Fact]
     public async Task Signing_in_sets_a_host_only_secure_strict_session_cookie()
@@ -148,7 +149,62 @@ public class SignInTests
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
     }
 
+    [Theory]
+    [InlineData("http://inbox.example.test", TrustedProxy, "https")]
+    [InlineData("http://localhost", "198.51.100.6", null)]
+    [InlineData("http://127.0.0.1", "198.51.100.6", null)]
+    [InlineData("http://[::1]", "198.51.100.6", null)]
+    public async Task Sign_in_works_over_https_through_a_trusted_proxy_or_on_localhost(string origin, string peer, string? forwardedProto)
+    {
+        await using var app = new InboxApp(new Dictionary<string, string?> { ["Inbox:TrustedProxies:0"] = TrustedProxy });
+        await app.CreateOperatorAsync();
+
+        var response = await SignInOverPlainHttpAsync(app, origin, peer, forwardedProto);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1001);
+    }
+
+    [Theory]
+    [InlineData(TrustedProxy, null)]
+    [InlineData("198.51.100.6", "https")]
+    public async Task Sign_in_over_plain_http_to_a_public_host_is_refused(string peer, string? forwardedProto)
+    {
+        await using var app = new InboxApp(new Dictionary<string, string?> { ["Inbox:TrustedProxies:0"] = TrustedProxy });
+        await app.CreateOperatorAsync();
+
+        var response = await SignInOverPlainHttpAsync(app, "http://inbox.example.test", peer, forwardedProto);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal("Operator sign-in needs HTTPS.", problem.GetProperty("title").GetString());
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id is 1001 or 1002 or 1003);
+    }
+
     private static InboxApp App() => new(new Dictionary<string, string?> { ["RateLimits:SignIns:PermitLimit"] = "50" });
+
+    // Signs alice in with a valid request token over plain http, as a TLS proxy forwards it. Over http the test client
+    // keeps Secure cookies to itself, so the cookies travel by hand.
+    private static async Task<HttpResponseMessage> SignInOverPlainHttpAsync(InboxApp app, string origin, string peer, string? forwardedProto)
+    {
+        var client = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri(origin), AllowAutoRedirect = false, HandleCookies = false });
+        client.DefaultRequestHeaders.Add(TestPeerAddress.Header, peer);
+        if (forwardedProto is not null)
+            client.DefaultRequestHeaders.Add("X-Forwarded-Proto", forwardedProto);
+
+        var session = await client.GetAsync("/api/auth/session");
+        session.EnsureSuccessStatusCode();
+        var cookies = session.Headers.GetValues("Set-Cookie").Select(c => c[..c.IndexOf(';', StringComparison.Ordinal)]).ToList();
+        var token = cookies.Single(c => c.StartsWith(OperatorSignIn.TokenCookie + "=", StringComparison.Ordinal))[(OperatorSignIn.TokenCookie.Length + 1)..];
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/sign-in")
+        {
+            Content = JsonContent.Create(new { name = "alice", password = InboxApp.AlicePassword }),
+        };
+        request.Headers.Add("Cookie", string.Join("; ", cookies));
+        request.Headers.Add(OperatorSignIn.TokenHeader, Uri.UnescapeDataString(token));
+        return await client.SendAsync(request);
+    }
 
     private static async Task<(HttpStatusCode Status, string? Title)> SignInAsync(HttpClient client, string name, string password)
     {

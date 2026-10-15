@@ -72,11 +72,23 @@ public static class OperatorSignIn
         auth.MapGet("/session", GetSession);
         auth.MapPost("/sign-in", HandleSignInAsync)
             .RequireRateLimiting(RateLimits.SignIns)
+            .AddEndpointFilter(RequireHttpsAsync)
             .AddEndpointFilter<AntiforgeryCheck>();
         auth.MapPost("/sign-out", HandleSignOutAsync)
             .RequireAuthorization()
             .AddEndpointFilter<AntiforgeryCheck>();
         return routes;
+    }
+
+    // Browsers treat plain http as secure only on loopback names. Anywhere else the password has just crossed the
+    // network in cleartext, so the sign-in is refused before it is checked. A trusted proxy reports https with X-Forwarded-Proto.
+    private static ValueTask<object?> RequireHttpsAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var request = context.HttpContext.Request;
+        var host = request.Host.Host;
+        if (request.IsHttps || host is "127.0.0.1" or "[::1]" or "::1" || string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+            return next(context);
+        return ValueTask.FromResult<object?>(Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Operator sign-in needs HTTPS."));
     }
 
     // Also hands the client a fresh request token. The client calls it again after signing in or out,
