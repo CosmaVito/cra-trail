@@ -107,6 +107,19 @@ public class PackCommandTests
     }
 
     [Fact]
+    public void An_out_of_range_source_date_epoch_exits_with_2()
+    {
+        using var run = new CliRun();
+        CliPacks.WriteRepo(run);
+        run.Environment["SOURCE_DATE_EPOCH"] = "99999999999999";
+
+        Assert.Equal(ExitCodes.InputError, run.Run(
+            "pack", "--product-sbom", TestPaths.Conformance("shared", "sbom-clean.cdx.json"),
+            "--rules", TestPaths.Conformance("rules"), "--out", "out/pack.zip"));
+        Assert.Contains("SOURCE_DATE_EPOCH", run.Err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Unknown_evidence_kinds_exit_with_2()
     {
         using var run = new CliRun();

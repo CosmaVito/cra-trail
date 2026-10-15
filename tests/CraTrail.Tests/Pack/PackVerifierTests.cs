@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using CraTrail.Core.Json;
 using CraTrail.Core.Pack;
 
@@ -57,6 +58,19 @@ public class PackVerifierTests
 
         entries.Remove(PackManifest.FileName);
         Assert.Equal(new[] { "manifest.json is missing" }, PackVerifier.Verify(entries).Problems);
+    }
+
+    [Fact]
+    public void Null_manifest_entries_fail_verification()
+    {
+        var entries = Entries(Pack());
+        var manifest = JsonNode.Parse(entries[PackManifest.FileName])!;
+        manifest["files"]!.AsArray().Add(null);
+        entries[PackManifest.FileName] = CraTrailJson.SerializeNode(manifest);
+
+        var result = PackVerifier.Verify(entries);
+        Assert.False(result.Ok);
+        Assert.Equal(new[] { "manifest.json is not valid: null entry in files" }, result.Problems);
     }
 
     [Theory]

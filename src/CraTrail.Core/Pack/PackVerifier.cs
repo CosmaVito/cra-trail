@@ -23,6 +23,11 @@ public static class PackVerifier
         {
             return new VerificationResult(false, manifestSha, null, [$"manifest.json is not valid: {ex.Message}"]);
         }
+        if (manifest.Files.Contains(null) || manifest.Tools.Contains(null))
+        {
+            var list = manifest.Files.Contains(null) ? "files" : "tools";
+            return new VerificationResult(false, manifestSha, null, [$"manifest.json is not valid: null entry in {list}"]);
+        }
 
         var problems = new List<string>();
         if (manifest.SchemaVersion != PackManifest.CurrentSchemaVersion)

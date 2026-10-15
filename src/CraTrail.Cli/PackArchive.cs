@@ -42,18 +42,25 @@ internal static class PackArchive
                 if (entries.ContainsKey(entry.FullName))
                     throw new PackFormatException($"Duplicate entry in pack: {entry.FullName}");
 
-                using var source = entry.Open();
-                using var buffer = new MemoryStream();
-                var chunk = new byte[81920];
-                int read;
-                while ((read = source.Read(chunk, 0, chunk.Length)) > 0)
+                try
                 {
-                    total += read;
-                    if (total > maxBytes)
-                        throw new PackFormatException($"The pack is larger than {maxBytes} bytes once extracted.");
-                    buffer.Write(chunk, 0, read);
+                    using var source = entry.Open();
+                    using var buffer = new MemoryStream();
+                    var chunk = new byte[81920];
+                    int read;
+                    while ((read = source.Read(chunk, 0, chunk.Length)) > 0)
+                    {
+                        total += read;
+                        if (total > maxBytes)
+                            throw new PackFormatException($"The pack is larger than {maxBytes} bytes once extracted.");
+                        buffer.Write(chunk, 0, read);
+                    }
+                    entries[entry.FullName] = buffer.ToArray();
                 }
-                entries[entry.FullName] = buffer.ToArray();
+                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
+                {
+                    throw new PackFormatException($"Damaged entry in pack: {entry.FullName}");
+                }
             }
         }
         return entries;

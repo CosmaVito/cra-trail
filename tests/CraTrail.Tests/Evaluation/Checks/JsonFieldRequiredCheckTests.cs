@@ -75,6 +75,15 @@ public class JsonFieldRequiredCheckTests
             new[] { "invalid evidence: sbom/product.cdx.json" },
             Evaluate(Core, new TestPackBuilder().Add("sbom/product.cdx.json", EvidenceKinds.ProductSbom, "{"), TestRules.Conformance).Details);
 
+    [Fact]
+    public void An_unknown_profile_fails_with_its_name()
+    {
+        var check = TestChecks.Define("c", "type: json-field-required\nkind: product-sbom\nprofile: nope");
+        var outcome = Evaluate(check, Sbom("sbom-clean.cdx.json"), TestRules.Conformance);
+        Assert.Equal(Statuses.Fail, outcome.Status);
+        Assert.Equal(new[] { "unknown profile nope" }, outcome.Details);
+    }
+
     private static TestPackBuilder Sbom(string name) =>
         new TestPackBuilder().AddShared("sbom/product.cdx.json", EvidenceKinds.ProductSbom, name);
 

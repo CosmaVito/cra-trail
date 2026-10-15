@@ -56,6 +56,18 @@ public class PackArchiveTests
     public void Folder_entries_are_skipped() =>
         Assert.Equal(new[] { "a/b.txt" }, PackArchive.Read(Zip(("a/", ""), ("a/b.txt", "x"))).Keys);
 
+    [Fact]
+    public void A_damaged_entry_is_rejected()
+    {
+        var bytes = Write(Pack());
+        var nameLength = BitConverter.ToUInt16(bytes, 26);
+        var extraLength = BitConverter.ToUInt16(bytes, 28);
+        bytes[30 + nameLength + extraLength] = 0xFF;
+
+        var error = Assert.Throws<PackFormatException>(() => PackArchive.Read(new MemoryStream(bytes)));
+        Assert.Equal("Damaged entry in pack: manifest.json", error.Message);
+    }
+
     private static PackContents Pack() =>
         new TestPackBuilder().Add("sbom/product.cdx.json", EvidenceKinds.ProductSbom, "{}").Add("scans/grype.json", EvidenceKinds.Grype, "{}").Build();
 

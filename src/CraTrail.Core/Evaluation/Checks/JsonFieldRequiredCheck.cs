@@ -18,7 +18,9 @@ public sealed class JsonFieldRequiredCheck : ICheck
         if (files.Count == 0)
             return CheckOutcome.Missing(check, $"no file of kind {kind}");
 
-        var profile = context.Rules.Profiles[check.GetString("profile") ?? ""];
+        var profileId = check.GetString("profile") ?? "";
+        if (!context.Rules.Profiles.TryGetValue(profileId, out var profile))
+            return CheckOutcome.Fail(check, [$"unknown profile {profileId}"]);
         var details = new List<string>();
         try
         {

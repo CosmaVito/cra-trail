@@ -171,8 +171,13 @@ internal static class PackCommand
                 ? parsed
                 : throw new ConfigException([$"--created-at: '{value}' is not a date and time."]);
         }
-        if (long.TryParse(io.GetEnvironmentVariable("SOURCE_DATE_EPOCH"), NumberStyles.None, CultureInfo.InvariantCulture, out var epoch))
-            return DateTimeOffset.FromUnixTimeSeconds(epoch);
+        var sourceDate = io.GetEnvironmentVariable("SOURCE_DATE_EPOCH");
+        if (long.TryParse(sourceDate, NumberStyles.None, CultureInfo.InvariantCulture, out var epoch))
+        {
+            return epoch <= DateTimeOffset.MaxValue.ToUnixTimeSeconds()
+                ? DateTimeOffset.FromUnixTimeSeconds(epoch)
+                : throw new ConfigException([$"SOURCE_DATE_EPOCH: '{sourceDate}' is out of range."]);
+        }
         return DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
     }
 

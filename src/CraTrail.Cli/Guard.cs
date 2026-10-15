@@ -25,5 +25,11 @@ internal static class Guard
             io.Err.WriteLine($"error: {ex.Message}");
             return ExitCodes.InputError;
         }
+        catch (Exception ex)
+        {
+            // Anything else would reach System.CommandLine and exit with 1, which means "gate blocked".
+            io.Err.WriteLine($"error: {ex.Message}");
+            return ExitCodes.InputError;
+        }
     }
 }
