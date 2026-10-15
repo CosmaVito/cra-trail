@@ -19,6 +19,9 @@ internal interface IAttestationVerifier
 
 internal sealed class GhAttestationVerifier : IAttestationVerifier
 {
+    // The release workflow attests the manifest with this predicate; gh looks for SLSA provenance unless told otherwise.
+    public const string EvaluationPredicate = "https://cosmavito.github.io/cra-trail/predicates/evaluation/v0.1";
+
     public SignatureResult Verify(byte[] manifestBytes, string bundlePath, string repository, string? signerWorkflow)
     {
         var folder = Directory.CreateTempSubdirectory("cra-trail-");
@@ -33,13 +36,8 @@ internal sealed class GhAttestationVerifier : IAttestationVerifier
                 RedirectStandardError = true,
                 UseShellExecute = false,
             };
-            foreach (var argument in new[] { "attestation", "verify", manifestPath, "--bundle", bundlePath, "--repo", repository })
+            foreach (var argument in Arguments(manifestPath, bundlePath, repository, signerWorkflow))
                 start.ArgumentList.Add(argument);
-            if (signerWorkflow is not null)
-            {
-                start.ArgumentList.Add("--signer-workflow");
-                start.ArgumentList.Add(signerWorkflow);
-            }
 
             using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start gh.");
             var errors = process.StandardError.ReadToEndAsync();
@@ -58,5 +56,17 @@ internal sealed class GhAttestationVerifier : IAttestationVerifier
         {
             folder.Delete(recursive: true);
         }
+    }
+
+    internal static List<string> Arguments(string manifestPath, string bundlePath, string repository, string? signerWorkflow)
+    {
+        List<string> arguments =
+        [
+            "attestation", "verify", manifestPath, "--bundle", bundlePath, "--repo", repository,
+            "--predicate-type", EvaluationPredicate,
+        ];
+        if (signerWorkflow is not null)
+            arguments.AddRange(["--signer-workflow", signerWorkflow]);
+        return arguments;
     }
 }
