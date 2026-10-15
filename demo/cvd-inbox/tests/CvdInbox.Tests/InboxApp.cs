@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
@@ -83,6 +84,22 @@ public sealed class InboxApp : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
         });
+    }
+
+    // A host that fails to start is not kept by the factory, and Program.cs does not dispose it on an early failure.
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = builder.Build();
+        try
+        {
+            host.Start();
+            return host;
+        }
+        catch
+        {
+            host.Dispose();
+            throw;
+        }
     }
 
     public override async ValueTask DisposeAsync()

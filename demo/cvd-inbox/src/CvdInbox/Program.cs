@@ -26,10 +26,15 @@ builder.Services.AddSingleton<SecurityEvents>();
 builder.Services.AddInboxRateLimits();
 builder.Services.AddOperators();
 
-await using var app = builder.Build();
+// Not "await using": RunAsync disposes the app. A failure before RunAsync, such as invalid Inbox settings, must leave
+// the host undisposed, because WebApplicationFactory still waits on it from another thread to report that failure.
+var app = builder.Build();
 
 if (runCommand)
-    return await OperatorCommand.RunAsync(app.Services, args, Console.In, Console.Out, Console.Error);
+{
+    await using (app)
+        return await OperatorCommand.RunAsync(app.Services, args, Console.In, Console.Out, Console.Error);
+}
 
 await app.Services.PrepareDatabaseAsync();
 
