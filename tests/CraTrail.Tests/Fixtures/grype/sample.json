@@ -1,0 +1,86 @@
+{
+  "matches": [
+    {
+      "vulnerability": {
+        "id": "GHSA-5crp-9r3c-p9vr",
+        "dataSource": "https://github.com/advisories/GHSA-5crp-9r3c-p9vr",
+        "namespace": "github:language:dotnet",
+        "severity": "High",
+        "cvss": [
+          { "type": "Secondary", "version": "3.1", "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H", "metrics": { "baseScore": 7.5, "exploitabilityScore": 3.9, "impactScore": 3.6 }, "vendorMetadata": {} }
+        ],
+        "epss": [ { "cve": "CVE-2024-21907", "epss": 0.32908, "percentile": 0.98328, "date": "2026-10-13" } ],
+        "fix": { "versions": [ "13.0.1" ], "state": "fixed" },
+        "risk": 24.681
+      },
+      "relatedVulnerabilities": [
+        {
+          "id": "CVE-2024-21907",
+          "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2024-21907",
+          "namespace": "nvd:cpe",
+          "severity": "High",
+          "cvss": [
+            { "source": "nvd@nist.gov", "type": "Primary", "version": "3.1", "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H", "metrics": { "baseScore": 7.5 }, "vendorMetadata": {} }
+          ]
+        }
+      ],
+      "matchDetails": [ { "type": "exact-direct-match", "matcher": "dotnet-matcher" } ],
+      "artifact": { "id": "ref-newtonsoft", "name": "Newtonsoft.Json", "version": "12.0.1", "type": "dotnet", "language": "dotnet", "purl": "pkg:nuget/Newtonsoft.Json@12.0.1" }
+    },
+    {
+      "vulnerability": {
+        "id": "GHSA-jfh8-c2jp-5v3q",
+        "dataSource": "https://github.com/advisories/GHSA-jfh8-c2jp-5v3q",
+        "namespace": "github:language:java",
+        "severity": "Critical",
+        "cvss": [
+          { "type": "Secondary", "version": "3.1", "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H", "metrics": { "baseScore": 10.0 }, "vendorMetadata": {} }
+        ],
+        "fix": { "versions": [ "2.15.0" ], "state": "fixed" },
+        "risk": 100
+      },
+      "relatedVulnerabilities": [
+        {
+          "id": "CVE-2021-44228",
+          "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+          "namespace": "nvd:cpe",
+          "severity": "Critical",
+          "cvss": [
+            { "source": "nvd@nist.gov", "type": "Primary", "version": "3.1", "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H", "metrics": { "baseScore": 10.0 }, "vendorMetadata": {} }
+          ],
+          "knownExploited": [ { "cve": "CVE-2021-44228", "vendorProject": "Apache", "product": "Log4j2", "dateAdded": "2021-12-10" } ],
+          "epss": [ { "cve": "CVE-2021-44228", "epss": 0.99999, "percentile": 1, "date": "2026-10-13" } ]
+        }
+      ],
+      "artifact": { "id": "ref-log4j", "name": "log4j-core", "version": "2.14.1", "type": "java-archive", "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" }
+    },
+    {
+      "vulnerability": {
+        "id": "GHSA-aaaa-bbbb-cccc",
+        "dataSource": "https://github.com/advisories/GHSA-aaaa-bbbb-cccc",
+        "namespace": "github:language:javascript",
+        "severity": "Critical",
+        "cvss": [],
+        "fix": { "versions": [], "state": "not-fixed" }
+      },
+      "relatedVulnerabilities": [],
+      "artifact": { "id": "ref-example-lib", "name": "example-lib", "version": "1.0.0", "type": "npm", "purl": "pkg:npm/example-lib@1.0.0" }
+    }
+  ],
+  "ignoredMatches": [
+    {
+      "vulnerability": { "id": "GHSA-xvch-5gv4-984h", "severity": "Critical", "cvss": [ { "version": "3.1", "metrics": { "baseScore": 9.8 } } ] },
+      "relatedVulnerabilities": [ { "id": "CVE-2021-44906" } ],
+      "artifact": { "id": "ref-minimist", "name": "minimist", "version": "1.2.0", "type": "npm", "purl": "pkg:npm/minimist@1.2.0" },
+      "appliedIgnoreRules": [ { "namespace": "vex", "vex-status": "not_affected" } ]
+    }
+  ],
+  "source": { "type": "sbom-file", "target": "./bom.json" },
+  "distro": { "name": "", "version": "", "idLike": null },
+  "descriptor": {
+    "name": "grype",
+    "version": "0.120.1",
+    "db": { "status": { "schemaVersion": "v6.1.10", "built": "2026-10-14T06:30:34Z", "valid": true } },
+    "timestamp": "2026-10-15T09:19:30.091376+02:00"
+  }
+}
