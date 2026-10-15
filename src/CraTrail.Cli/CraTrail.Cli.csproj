@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>CraTrail.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>cra-trail</ToolCommandName>
+    <PackageId>CraTrail</PackageId>
+    <Version>0.1.0-dev</Version>
+    <Description>Builds, evaluates and verifies Cyber Resilience Act evidence packs: SBOM, vulnerability scans, VEX, an Annex I evaluation and a release gate.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://cosmavito.github.io/cra-trail/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CosmaVito/cra-trail</RepositoryUrl>
+    <PackageTags>cra;cyber-resilience-act;sbom;cyclonedx;vex;openvex;supply-chain</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <ProjectReference Include="..\CraTrail.Core\CraTrail.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CraTrail.Tests" />
+  </ItemGroup>
+</Project>

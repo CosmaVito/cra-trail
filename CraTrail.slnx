@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CraTrail.Core/CraTrail.Core.csproj" />
+    <Project Path="src/CraTrail.Cli/CraTrail.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CraTrail.Tests/CraTrail.Tests.csproj" />
+  </Folder>
+</Solution>
