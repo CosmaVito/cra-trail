@@ -11,6 +11,8 @@ internal static class CliApp
         ArgumentNullException.ThrowIfNull(io);
         var root = new RootCommand("Builds, evaluates and verifies Cyber Resilience Act evidence packs.");
         root.Subcommands.Add(InitCommand.Create(io));
+        root.Subcommands.Add(PackCommand.Create(io));
+        root.Subcommands.Add(EvaluateCommand.Create(io));
 
         var parse = root.Parse(args);
         if (parse.Errors.Count > 0)
