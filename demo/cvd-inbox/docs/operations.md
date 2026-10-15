@@ -18,7 +18,7 @@ To use a host folder instead of a named volume, give it to UID 1654 first: `chow
 
 `scripts/container-smoke.sh` starts the image with exactly these options and checks it.
 
-**Zip.** Install the ASP.NET Core Runtime 10, unzip, set the configuration and run `./cvd-inbox` as a dedicated user that owns only the data folder, for example from a systemd unit.
+**Zip.** Install the ASP.NET Core Runtime 10, unzip, set the configuration and run `./cvd-inbox` as a dedicated user that owns only the data folder, for example from a systemd unit. The app looks for `appsettings.json`, the client files in `wwwroot/` and a relative `Inbox__DataPath`, such as the default `data`, in the current directory. Start it from the unzipped folder: in a systemd unit, set `WorkingDirectory=` to that folder. Run `create-operator` as the same user, with the same environment and working directory, or it can create a separate database that the service never reads.
 
 ## TLS and reverse proxy
 
@@ -40,7 +40,7 @@ There is no default account and no setup page. Create operators on the server:
 ./cvd-inbox create-operator <name> [--password-stdin]
 ```
 
-Names have 2 to 32 characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. Exit codes: 0 created, 1 refused, 2 wrong usage.
+Names have 2 to 32 characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. On success it prints the path of the database file it wrote to. Exit codes: 0 created, 1 refused, 2 wrong usage.
 
 ## Upgrade
 

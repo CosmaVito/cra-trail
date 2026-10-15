@@ -12,7 +12,11 @@ It is the example product of cra-trail: the cra-trail pipeline builds it, scans 
 - The researcher's contact is erased a set number of days after the report is closed.
 - Security events go to the log as JSON lines.
 
-Limits: one tenant, no email, no sign-up page, no password reset. Operators are created on the server.
+Limits: one tenant, no email, no sign-up page, no password reset. Operators are created on the server. No command removes an operator or changes a password, and sessions are not checked against the database. To revoke an operator, stop the app, delete the operator's row with `sqlite3` on the data volume (the image has no shell: do it from the host or another container), delete the `keys/` folder to end every session, and start the app again:
+
+```bash
+sqlite3 /path/to/data/cvd-inbox.db "PRAGMA secure_delete = ON; DELETE FROM Operators WHERE Name = 'alice';"
+```
 
 ## Run the container
 
@@ -36,7 +40,7 @@ printf '%s\n' "$OPERATOR_PASSWORD" | docker exec -i cvd-inbox ./cvd-inbox create
 
 ## Run from the zip
 
-The zip needs the ASP.NET Core Runtime 10 on a Linux x64 host.
+The zip needs the ASP.NET Core Runtime 10 on a Linux x64 host. Start it from the unzipped folder: the app looks for `appsettings.json`, the client files in `wwwroot/` and a relative `Inbox__DataPath`, such as the default `data`, in the current directory.
 
 ```bash
 unzip cvd-inbox-0.1.0-linux-x64.zip -d cvd-inbox && cd cvd-inbox
@@ -45,6 +49,8 @@ export Inbox__DataPath=/var/lib/cvd-inbox ASPNETCORE_URLS=http://127.0.0.1:8080
 ./cvd-inbox create-operator alice
 ./cvd-inbox
 ```
+
+In a systemd unit, set `WorkingDirectory=` to the unzipped folder. Run `create-operator` as the user of the service, with the same environment and working directory, or it can create a separate database that the service never reads. The command prints the path of the database file it wrote to.
 
 ## Configuration
 

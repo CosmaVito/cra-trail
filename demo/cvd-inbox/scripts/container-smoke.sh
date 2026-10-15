@@ -71,7 +71,7 @@ fi
 docker rm -f "$name" >/dev/null
 start
 if second="$(printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin 2>&1)"; then
-  fail "the operator did not survive a restart: create-operator succeeded again"
+  fail "the operator did not survive a container recreate: create-operator succeeded again"
 fi
 grep -q 'already exists' <<<"$second" || fail "the second create-operator failed for another reason: $second"
 

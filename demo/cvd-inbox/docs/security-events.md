@@ -2,7 +2,7 @@
 
 Annex I, Part I, point 2(l) of the Cyber Resilience Act: record and monitor relevant internal activity, with a way to opt out.
 
-CVD Inbox writes these events to standard output as JSON lines, under the log category `CvdInbox.Security`. Collect them with your container runtime or journal and forward them to your monitoring.
+CVD Inbox writes these events to standard output as JSON lines, each with a UTC `Timestamp`, under the log category `CvdInbox.Security`. Collect them with your container runtime or journal and forward them to your monitoring.
 
 | ID | Level | Event | Fields |
 |---|---|---|---|
@@ -27,6 +27,8 @@ Two more events come from the retention job, under the log category `CvdInbox.Re
 |---|---|
 | 1302 | Erasing expired contacts failed; the next sweep tries again |
 | 1303 | Truncating the write-ahead log failed; the next sweep tries again |
+
+Event 1005 is written by the `create-operator` process, not by the server. When you run the command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
 
 A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. Event 1002 never carries what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
 
