@@ -16,11 +16,11 @@ public class DatabaseTests
     }
 
     [Fact]
-    public async Task Every_connection_zeroes_deleted_content_and_enforces_foreign_keys()
+    public async Task Every_connection_zeroes_deleted_content_keeps_temporary_data_in_memory_and_enforces_foreign_keys()
     {
         await using var app = new InboxApp();
 
-        var (secureDelete, foreignKeys) = await app.WithDbAsync(async db =>
+        var (secureDelete, foreignKeys, tempStore) = await app.WithDbAsync(async db =>
         {
             await db.Database.OpenConnectionAsync();
             await using var command = db.Database.GetDbConnection().CreateCommand();
@@ -28,11 +28,15 @@ public class DatabaseTests
             var secure = Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
             command.CommandText = "PRAGMA foreign_keys;";
             var keys = Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
-            return (secure, keys);
+            command.CommandText = "PRAGMA temp_store;";
+            var temp = Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
+            return (secure, keys, temp);
         });
 
         Assert.Equal(1L, secureDelete);
         Assert.Equal(1L, foreignKeys);
+        // 2 is MEMORY.
+        Assert.Equal(2L, tempStore);
     }
 
     [Fact]

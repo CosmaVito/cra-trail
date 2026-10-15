@@ -3,10 +3,11 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace CvdInbox.Data;
 
-// secure_delete makes SQLite overwrite deleted content with zeros. It is off by default and holds per connection.
+// secure_delete makes SQLite overwrite deleted content with zeros. temp_store = MEMORY keeps temporary tables and
+// sort indexes out of temporary files, which nothing would zero. Each pragma holds per connection and is off by default.
 public sealed class SqliteHardening : DbConnectionInterceptor
 {
-    private const string Pragmas = "PRAGMA secure_delete = ON; PRAGMA foreign_keys = ON;";
+    private const string Pragmas = "PRAGMA secure_delete = ON; PRAGMA temp_store = MEMORY; PRAGMA foreign_keys = ON;";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
