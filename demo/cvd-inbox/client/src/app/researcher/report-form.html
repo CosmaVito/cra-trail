@@ -1,0 +1,73 @@
+@if (receipt()) {
+  <section class="notice" aria-labelledby="receipt-heading">
+    <h1 id="receipt-heading" #receiptHeading tabindex="-1">Report received</h1>
+    <p>Keep this receipt code. It is the only way to follow your report, and it is shown only once.</p>
+    <p><code class="receipt" data-testid="receipt-code">{{ receipt() }}</code></p>
+    <p><a routerLink="/status">Check the status of your report</a></p>
+  </section>
+} @else {
+  <h1>Report a vulnerability</h1>
+  <p>
+    Please read the <a routerLink="/security-policy">security policy</a> before you write.
+    Share only what is needed to understand and reproduce the issue.
+  </p>
+
+  @if (failure()) {
+    <p class="alert" role="alert">{{ failure() }}</p>
+  }
+
+  <form [formRoot]="reportForm">
+    <div class="field">
+      @let productError = visibleError(reportForm.product());
+      <label for="product">Product</label>
+      <input id="product" [formField]="reportForm.product" autocomplete="off"
+             [attr.aria-invalid]="productError ? 'true' : null"
+             [attr.aria-describedby]="productError ? 'product-error' : null" />
+      @if (productError) {
+        <p class="error" id="product-error">{{ productError }}</p>
+      }
+    </div>
+
+    <div class="field">
+      @let versionError = visibleError(reportForm.version());
+      <label for="version">Version</label>
+      <input id="version" [formField]="reportForm.version" autocomplete="off"
+             [attr.aria-invalid]="versionError ? 'true' : null"
+             [attr.aria-describedby]="versionError ? 'version-error' : null" />
+      @if (versionError) {
+        <p class="error" id="version-error">{{ versionError }}</p>
+      }
+    </div>
+
+    <div class="field">
+      @let descriptionError = visibleError(reportForm.description());
+      <label for="description">Description</label>
+      <p class="hint" id="description-hint">What is affected, how to reproduce it, and what an attacker could do with it.</p>
+      <textarea id="description" [formField]="reportForm.description"
+                [attr.aria-invalid]="descriptionError ? 'true' : null"
+                [attr.aria-describedby]="descriptionError ? 'description-hint description-error' : 'description-hint'"></textarea>
+      @if (descriptionError) {
+        <p class="error" id="description-error">{{ descriptionError }}</p>
+      }
+    </div>
+
+    <div class="field">
+      @let contactError = visibleError(reportForm.contact());
+      <label for="contact">Contact (optional)</label>
+      <p class="hint" id="contact-hint">An email address or another way to reach you, if you want us to ask questions. The security policy says how long we keep it.</p>
+      <input id="contact" [formField]="reportForm.contact" autocomplete="email"
+             [attr.aria-invalid]="contactError ? 'true' : null"
+             [attr.aria-describedby]="contactError ? 'contact-hint contact-error' : 'contact-hint'" />
+      @if (contactError) {
+        <p class="error" id="contact-error">{{ contactError }}</p>
+      }
+    </div>
+
+    <div class="trap" aria-hidden="true">
+      <label for="website">Leave this field empty</label>
+      <input id="website" [formField]="reportForm.website" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <button type="submit" [disabled]="reportForm().submitting()">Send report</button>
+  </form>
+}

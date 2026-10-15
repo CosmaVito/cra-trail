@@ -1,0 +1,45 @@
+<h1>Security policy</h1>
+
+@if (policy(); as p) {
+  <h2>How to report</h2>
+  <p>
+    Use the <a routerLink="/">report form</a>. Say which product and version you tested,
+    what you found and how to reproduce it.
+  </p>
+  @if (p.contact.length) {
+    <p>You can also write to:</p>
+    <ul>
+      @for (contact of p.contact; track contact) {
+        <li><a [href]="contact">{{ contact }}</a></li>
+      }
+    </ul>
+  }
+
+  <h2>What happens next</h2>
+  <p>
+    We confirm that we received your report within {{ p.acknowledgeWithinDays }} days.
+    You can follow its status with your receipt code on the <a routerLink="/status">status page</a>.
+  </p>
+  <p>
+    We publish an advisory once a fix is available. Unless we agree on another date with you,
+    we disclose at most {{ p.disclosureAfterDays }} days after your report.
+  </p>
+
+  <h2>Your data</h2>
+  <p>
+    Your contact details are optional. If you leave them, we use them only to talk to you about this report,
+    and we erase them {{ p.contactRetentionDays }} days after the report is closed.
+  </p>
+  <p>CVD Inbox does not record your network address with the report.</p>
+
+  <h2>Testing</h2>
+  <p>
+    Test only systems you are allowed to test. Do not access, change or delete data that is not yours,
+    and stop as soon as you can show the issue.
+  </p>
+  <p>Preferred languages: {{ p.preferredLanguages }}. This policy is valid until {{ p.expires | date: 'd MMMM y' }}.</p>
+} @else if (failure()) {
+  <p class="alert" role="alert">{{ failure() }}</p>
+} @else {
+  <p>Loading the policy…</p>
+}

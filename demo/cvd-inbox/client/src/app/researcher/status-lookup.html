@@ -1,0 +1,33 @@
+<h1>Report status</h1>
+<p>Enter the receipt code you got when you sent the report.</p>
+
+@if (failure()) {
+  <p class="alert" role="alert">{{ failure() }}</p>
+}
+
+<form [formRoot]="lookupForm">
+  <div class="field">
+    @let receiptError = visibleError(lookupForm.receipt());
+    <label for="receipt">Receipt code</label>
+    <input id="receipt" [formField]="lookupForm.receipt" autocomplete="off" spellcheck="false"
+           [attr.aria-invalid]="receiptError ? 'true' : null"
+           [attr.aria-describedby]="receiptError ? 'receipt-error' : null" />
+    @if (receiptError) {
+      <p class="error" id="receipt-error">{{ receiptError }}</p>
+    }
+  </div>
+  <button type="submit" [disabled]="lookupForm().submitting()">Check status</button>
+</form>
+
+<div aria-live="polite">
+  @if (result(); as status) {
+    <dl class="facts">
+      <dt>Status</dt>
+      <dd data-testid="report-status">{{ labels[status.status] }}</dd>
+      <dt>Received</dt>
+      <dd>{{ status.receivedAt | date: 'd MMM y, HH:mm' }}</dd>
+      <dt>Last change</dt>
+      <dd>{{ status.updatedAt | date: 'd MMM y, HH:mm' }}</dd>
+    </dl>
+  }
+</div>
