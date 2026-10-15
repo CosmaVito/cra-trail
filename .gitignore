@@ -11,3 +11,4 @@ test-results/
 playwright-report/
 demo/cvd-inbox/src/CvdInbox/wwwroot/
 demo/cvd-inbox/src/CvdInbox/data/*.db*
+demo/cvd-inbox/src/CvdInbox/data/keys/
