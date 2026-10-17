@@ -40,6 +40,13 @@ internal static class VerifyCommand
             return ExitCodes.InputError;
         }
 
+        // A wrong path is a typing error, not a bad signature: gh would report both the same way.
+        foreach (var bundle in options.Bundles.Where(bundle => !File.Exists(io.Resolve(bundle))))
+        {
+            io.Err.WriteLine($"error: bundle not found: {bundle}");
+            return ExitCodes.InputError;
+        }
+
         var (pack, result) = PackLoader.Load(io, options.Pack);
         io.Out.WriteLine($"manifest sha256 {result.ManifestSha256}");
         if (pack is null)

@@ -41,6 +41,7 @@ public class VerifyCommandTests
         using var run = Packed();
         var stub = new StubVerifier(SignatureStatus.Verified);
         run.Verifier = stub;
+        File.WriteAllText(run.Path("manifest.sigstore.json"), "{}");
 
         Assert.Equal(ExitCodes.Ok, run.Run("verify", "out/pack.zip", "--bundle", "manifest.sigstore.json", "--repo", "CosmaVito/cra-trail", "--signer-workflow", Workflow));
 
@@ -53,6 +54,7 @@ public class VerifyCommandTests
     {
         using var run = Packed();
         run.Verifier = new StubVerifier(SignatureStatus.Invalid);
+        File.WriteAllText(run.Path("b.json"), "{}");
 
         Assert.Equal(ExitCodes.VerificationFailed, run.Run("verify", "out/pack.zip", "--bundle", "b.json", "--repo", "CosmaVito/cra-trail"));
         Assert.Contains("signature (b.json): INVALID, stub", run.Out.ToString(), StringComparison.Ordinal);
@@ -62,9 +64,23 @@ public class VerifyCommandTests
     public void A_missing_gh_only_fails_when_a_signature_is_required()
     {
         using var run = Packed();
+        File.WriteAllText(run.Path("b.json"), "{}");
         Assert.Equal(ExitCodes.Ok, run.Run("verify", "out/pack.zip", "--bundle", "b.json", "--repo", "CosmaVito/cra-trail"));
         Assert.Contains("signature (b.json): not checked, gh CLI not found", run.Out.ToString(), StringComparison.Ordinal);
         Assert.Equal(ExitCodes.VerificationFailed, run.Run("verify", "out/pack.zip", "--bundle", "b.json", "--repo", "CosmaVito/cra-trail", "--require-signature"));
+    }
+
+    [Fact]
+    public void A_bundle_path_that_does_not_exist_is_an_input_error()
+    {
+        using var run = Packed();
+        var stub = new StubVerifier(SignatureStatus.Invalid);
+        run.Verifier = stub;
+
+        Assert.Equal(ExitCodes.InputError, run.Run("verify", "out/pack.zip", "--bundle", "missing.sigstore.json", "--repo", "CosmaVito/cra-trail"));
+
+        Assert.Contains("error: bundle not found: missing.sigstore.json", run.Err.ToString(), StringComparison.Ordinal);
+        Assert.Empty(stub.Calls);
     }
 
     [Fact]
