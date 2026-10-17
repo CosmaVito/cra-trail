@@ -60,15 +60,21 @@ public static class OpenVex
             var products = new List<string>();
             foreach (var product in productNodes)
             {
-                string?[] candidates =
-                [
-                    JsonAccess.Text(JsonAccess.Child(product, "@id")),
-                    JsonAccess.Text(JsonAccess.Child(JsonAccess.Child(product, "identifiers"), "purl")),
-                ];
-                foreach (var candidate in candidates)
+                // Subcomponents are where the vulnerability originates, usually dependencies, and Grype reports
+                // findings on those. A product that lists them speaks about them, whatever its own identifier.
+                var subcomponents = JsonAccess.Items(JsonAccess.Child(product, "subcomponents")).ToList();
+                foreach (var target in subcomponents.Count > 0 ? subcomponents : [product])
                 {
-                    if (candidate is not null && candidate.StartsWith("pkg:", StringComparison.OrdinalIgnoreCase) && !products.Contains(candidate))
-                        products.Add(candidate);
+                    string?[] candidates =
+                    [
+                        JsonAccess.Text(JsonAccess.Child(target, "@id")),
+                        JsonAccess.Text(JsonAccess.Child(JsonAccess.Child(target, "identifiers"), "purl")),
+                    ];
+                    foreach (var candidate in candidates)
+                    {
+                        if (candidate is not null && candidate.StartsWith("pkg:", StringComparison.OrdinalIgnoreCase) && !products.Contains(candidate))
+                            products.Add(candidate);
+                    }
                 }
             }
 

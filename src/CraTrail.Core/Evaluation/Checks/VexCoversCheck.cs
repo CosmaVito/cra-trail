@@ -23,11 +23,13 @@ public sealed class VexCoversCheck : ICheck
         List<string> uncovered;
         try
         {
+            // Read before any finding is selected: a broken VEX file fails here even when nothing needs a statement.
+            var vex = context.Vex;
             // Grype moves matches to ignoredMatches for --only-fixed, ignore rules and its own --vex.
             // Only the statements inside the pack can waive a finding.
             uncovered = [.. context.Findings.Concat(context.IgnoredFindings)
                 .Where(f => (!kevOnly || f.Kev) && (minCvss is null || f.EffectiveScore >= minCvss))
-                .Where(f => !IsCovered(context.Vex.Resolve(f.Ids, f.Purl)))
+                .Where(f => !IsCovered(vex.Resolve(f.Ids, f.Purl)))
                 .Select(f => f.Purl is null ? $"{f.Id} {f.Name}@{f.Version}" : $"{f.Id} {f.Purl}")];
         }
         catch (EvidenceFormatException ex)

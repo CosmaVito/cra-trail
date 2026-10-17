@@ -92,6 +92,19 @@ public class VexCoversCheckTests
     }
 
     [Fact]
+    public void A_broken_vex_file_fails_even_when_no_finding_needs_it()
+    {
+        var outcome = Evaluate(NoKev, Report("grype-clean.json").AddShared("vex/product.openvex.json", EvidenceKinds.Vex, "vex-broken.openvex.json"));
+
+        Assert.Equal(Statuses.Fail, outcome.Status);
+        Assert.Equal(new[] { "invalid evidence: vex/product.openvex.json" }, outcome.Details);
+    }
+
+    [Fact]
+    public void A_statement_on_a_subcomponent_covers_the_finding() =>
+        Assert.Equal(Statuses.Pass, Evaluate(NoKev, Report("grype-kev.json").AddShared("vex/product.openvex.json", EvidenceKinds.Vex, "vex-kev-subcomponent.openvex.json")).Status);
+
+    [Fact]
     public void Findings_that_grype_ignored_still_need_a_statement_in_the_pack()
     {
         var outcome = Evaluate(NoKev, Report("grype-kev-ignored.json"));

@@ -48,6 +48,23 @@ public class OpenVexTests
     }
 
     [Fact]
+    public void A_product_with_subcomponents_covers_findings_on_those_subcomponents()
+    {
+        var index = OpenVex.BuildIndex([Document("""
+            [ { "vulnerability": { "name": "CVE-2021-44228" },
+                "products": [ { "@id": "pkg:oci/cvd-inbox@sha256%3Aabc",
+                                "subcomponents": [ { "@id": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" },
+                                                   { "identifiers": { "purl": "pkg:nuget/Newtonsoft.Json@12.0.1" } } ] } ],
+                "status": "not_affected", "justification": "vulnerable_code_not_in_execute_path" } ]
+            """)]);
+
+        Assert.Equal("not_affected", index.Resolve(KevIds, Log4j)?.Status);
+        Assert.Equal("not_affected", index.Resolve(["CVE-2021-44228"], "pkg:nuget/Newtonsoft.Json@12.0.1")?.Status);
+        // The statement is about the subcomponents, not about the product that contains them.
+        Assert.Null(index.Resolve(KevIds, "pkg:oci/cvd-inbox@sha256%3Aabc"));
+    }
+
+    [Fact]
     public void A_product_that_is_not_a_purl_matches_nothing()
     {
         var index = OpenVex.BuildIndex([Document("""
