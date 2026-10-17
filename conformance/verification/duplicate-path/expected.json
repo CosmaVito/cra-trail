@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "manifestSha256": "8be50f6f80a730b988e493633d49f6c72f9c2564a20f370303a2012a88946785",
+  "problems": [
+    "duplicate path: product.json"
+  ]
+}

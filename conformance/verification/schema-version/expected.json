@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "manifestSha256": "be9623217e1911981a922f6d647c121ded799c3002d70f3b33768d60d16c7e9a",
+  "problems": [
+    "unsupported schema version '9.9'"
+  ]
+}

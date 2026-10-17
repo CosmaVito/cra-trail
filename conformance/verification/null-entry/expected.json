@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "manifestSha256": "583d5db6ad4047e0fd793a3d867652a077042c831663cef51cbda462b6cd9bdc",
+  "problems": [
+    "manifest.json is not valid: null entry in files"
+  ]
+}

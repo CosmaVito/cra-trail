@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "manifestSha256": "64d9e7dc81a4dc549a96f8cdf0563721f28e41dc445ac8f248a5adb707aad1ba",
+  "problems": [
+    "unsafe path: ../evil",
+    "unsafe path: a//b"
+  ]
+}

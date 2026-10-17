@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using CraTrail.Core.Evaluation;
 using CraTrail.Core.Json;
-using CraTrail.Core.Pack;
 
 namespace CraTrail.Tests.Conformance;
 
@@ -34,18 +33,5 @@ public class ConformanceTests
             File.WriteAllBytes(output, CraTrailJson.SerializeNode(actual!));
             Assert.Fail($"The evaluation differs from expected.json. The actual result is in {output}");
         }
-    }
-
-    [Fact]
-    public void A_tampered_case_fails_verification()
-    {
-        var pack = ConformanceCase.LoadPack(TestPaths.Conformance("cases", "clean"), TestRules.Conformance.Version);
-        var entries = new Dictionary<string, byte[]>(pack.Files, StringComparer.Ordinal) { [PackManifest.FileName] = pack.ManifestBytes };
-        Assert.True(PackVerifier.Verify(entries).Ok);
-
-        var sbom = (byte[])entries["sbom/product.cdx.json"].Clone();
-        sbom[^2] ^= 0x01;
-        entries["sbom/product.cdx.json"] = sbom;
-        Assert.Equal(new[] { "hash mismatch: sbom/product.cdx.json" }, PackVerifier.Verify(entries).Problems);
     }
 }

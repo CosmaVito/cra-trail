@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1",
+  "generator": { "name": "cra-trail", "version": "conformance" },
+  "rulesVersion": "test-1",
+  "product": { "name": "Example", "version": "1.0.0", "purl": null },
+  "source": null,
+  "signing": null,
+  "createdAt": "2026-10-15T00:00:00Z",
+  "tools": [],
+  "files": [
+    { "path": "product.json", "kind": "product", "mediaType": "application/json", "size": 42, "sha256": "a956b58659212cf3201dbd620fbc2a91ee7615a9ff8c57ccba81c201ea36853b" },
+    { "path": "sbom/product.cdx.json", "kind": "product-sbom", "mediaType": "application/vnd.cyclonedx+json", "size": 69, "sha256": "17be3d2745ec18e0ea9d0d9da7224bec5eda23d9b4a71543ed90a1807d0573e6" },
+    { "path": "scans/grype.json", "kind": "grype", "mediaType": "application/json", "size": 18, "sha256": "433127a5cc6a4999aa90addb34c172a23c116434c150222b0c2ac5b7f1096131" },
+    { "path": "product.json", "kind": "product", "mediaType": "application/json", "size": 42, "sha256": "a956b58659212cf3201dbd620fbc2a91ee7615a9ff8c57ccba81c201ea36853b" }
+  ]
+}

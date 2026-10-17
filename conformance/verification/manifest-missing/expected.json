@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "manifestSha256": null,
+  "problems": [
+    "manifest.json is missing"
+  ]
+}
