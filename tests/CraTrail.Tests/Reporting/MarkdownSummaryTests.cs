@@ -1,11 +1,12 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using CraTrail.Core.Evaluation;
 using CraTrail.Core.Pack;
 using CraTrail.Core.Reporting;
 
 namespace CraTrail.Tests.Reporting;
 
-public class MarkdownSummaryTests
+public partial class MarkdownSummaryTests
 {
     private static readonly PackManifest Manifest = new TestPackBuilder().Build().Manifest;
 
@@ -26,7 +27,7 @@ public class MarkdownSummaryTests
     {
         var text = Render(Result(new GateOutcome(true, ["no-kev-without-vex"], [])));
         Assert.StartsWith(
-            "## cra-trail gate: passed\n\nCVD Inbox 1.2.0 · rules 2026.10\n\nGate checks: `no-kev-without-vex`.\n\n### Annex I\n",
+            "## cra-trail gate: passed\n\n`CVD Inbox 1.2.0` · rules `2026.10`\n\nGate checks: `no-kev-without-vex`.\n\n### Annex I\n",
             text,
             StringComparison.Ordinal);
         Assert.DoesNotContain("Blocking", text, StringComparison.Ordinal);
@@ -46,9 +47,16 @@ public class MarkdownSummaryTests
     {
         var result = Result(new GateOutcome(true, [], [])) with
         {
-            Requirements = [new RequirementOutcome("x", "X", "A | B", "manual", Statuses.Missing, [], null, null, [])],
+            Requirements =
+            [
+                new RequirementOutcome("x", "X", "A | B", "manual", Statuses.Missing, [], null, null, []),
+                // A backslash before the pipe would pair with the escape and end the cell.
+                new RequirementOutcome("y", "Y", "C \\| D", "manual", Statuses.Missing, [], null, null, []),
+            ],
         };
-        Assert.Contains("| X | A \\| B | manual | missing |", Render(result), StringComparison.Ordinal);
+        var text = Render(result);
+        Assert.Contains("| `X` | `A \\| B` | `manual` | `missing` |", text, StringComparison.Ordinal);
+        Assert.Contains("| `Y` | `C \\| D` | `manual` | `missing` |", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -67,7 +75,7 @@ public class MarkdownSummaryTests
         Assert.Contains("- `GHSA-1 pkg:npm/evil@1.0.0 ## Gate passed [click](https://evil.example)`\n", text, StringComparison.Ordinal);
         Assert.Contains("- ``uses `back`ticks``\n", text, StringComparison.Ordinal);
         Assert.Contains("- `<img src=x onerror=alert(1)>`\n", text, StringComparison.Ordinal);
-        Assert.StartsWith("## cra-trail gate: blocked\n\nEvil \\<b\\>product\\</b\\> \\# Title 1.2.0", text, StringComparison.Ordinal);
+        Assert.StartsWith("## cra-trail gate: blocked\n\n`Evil <b>product</b> # Title 1.2.0`", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -91,7 +99,30 @@ public class MarkdownSummaryTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Evidence_text_stays_in_code_spans_where_it_cannot_become_a_link_a_mention_or_math()
+    {
+        // GitHub links bare URLs, www. hosts, e-mail addresses and @mentions, and renders $...$ as math, escaped or not.
+        const string Evil = "https://evil.example www.evil.example a@evil.example @octocat $x^2$";
+        var block = KevBlock with { Status = Evil, Hint = Evil };
+        var result = Result(new GateOutcome(false, [block.Check], [block])) with
+        {
+            RulesVersion = Evil,
+            Requirements = [new RequirementOutcome(Evil, Evil, Evil, Evil, Evil, [], null, null, [])],
+        };
+        var manifest = Manifest with { Product = Manifest.Product with { Name = Evil, Version = Evil } };
+
+        var outside = CodeSpan().Replace(MarkdownSummary.Render(result, manifest, TestProducts.Default), "");
+
+        Assert.DoesNotContain("evil", outside, StringComparison.Ordinal);
+        Assert.DoesNotContain("@", outside, StringComparison.Ordinal);
+        Assert.DoesNotContain("$", outside, StringComparison.Ordinal);
+    }
+
     private static string Render(EvaluationResult result) => MarkdownSummary.Render(result, Manifest, TestProducts.Default);
+
+    [GeneratedRegex(@"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)")]
+    private static partial Regex CodeSpan();
 
     private static EvaluationResult Result(GateOutcome gate) => new(
         "0.1",

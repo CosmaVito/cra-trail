@@ -6,8 +6,9 @@ using CraTrail.Core.Product;
 
 namespace CraTrail.Core.Reporting;
 
-// Everything in the summary comes from the pack, which anyone can write, evaluation.json included. Ids and details go
-// in code spans, the rest is escaped, and nothing keeps a line break: no input can add a heading, a link or HTML.
+// Every value in the summary comes from the pack, which anyone can write, evaluation.json included. Each one goes in a
+// code span on one line. Escaping is not enough: GitHub links bare URLs, e-mail addresses and @mentions, and renders
+// $...$ as math, escaped or not. Inside a code span no input can add a heading, a list, a link or HTML.
 public static class MarkdownSummary
 {
     private const int MaxDetails = 20;
@@ -21,8 +22,8 @@ public static class MarkdownSummary
         var text = new StringBuilder();
 
         text.Append("## cra-trail gate: ").Append(gate.Passed ? "passed" : "blocked").Append("\n\n");
-        text.Append(Text(manifest.Product.Name)).Append(' ').Append(Text(manifest.Product.Version))
-            .Append(" · rules ").Append(Text(result.RulesVersion));
+        text.Append(Code($"{manifest.Product.Name} {manifest.Product.Version}"))
+            .Append(" · rules ").Append(Code(result.RulesVersion));
         if (!gate.Passed)
             text.Append(" · ").Append(Count(gate.Blocking.Count, "blocking check", "blocking checks"));
         text.Append("\n\n");
@@ -45,13 +46,13 @@ public static class MarkdownSummary
             text.Append("### Blocking checks\n\n");
             foreach (var block in gate.Blocking)
             {
-                text.Append("**").Append(Code(block.Check)).Append("** (").Append(Text(block.Status)).Append(")\n");
+                text.Append("**").Append(Code(block.Check)).Append("** (").Append(Code(block.Status)).Append(")\n");
                 foreach (var detail in block.Details.Take(MaxDetails))
                     text.Append("- ").Append(Code(detail)).Append('\n');
                 if (block.Details.Count > MaxDetails)
                     text.Append("- and ").Append(Number(block.Details.Count - MaxDetails)).Append(" more\n");
                 if (block.Hint is not null)
-                    text.Append("\nFix: ").Append(Text(block.Hint)).Append('\n');
+                    text.Append("\nFix: ").Append(Code(block.Hint)).Append('\n');
                 text.Append('\n');
             }
         }
@@ -59,10 +60,10 @@ public static class MarkdownSummary
         text.Append("### Annex I\n\n| Point | Requirement | Coverage | Result |\n|---|---|---|---|\n");
         foreach (var requirement in result.Requirements)
         {
-            text.Append("| ").Append(Text(requirement.Point))
-                .Append(" | ").Append(Text(requirement.Title))
-                .Append(" | ").Append(Text(requirement.Coverage))
-                .Append(" | ").Append(Text(requirement.Status))
+            text.Append("| ").Append(Cell(requirement.Point))
+                .Append(" | ").Append(Cell(requirement.Title))
+                .Append(" | ").Append(Cell(requirement.Coverage))
+                .Append(" | ").Append(Cell(requirement.Status))
                 .Append(" |\n");
         }
 
@@ -95,16 +96,20 @@ public static class MarkdownSummary
         return fence + pad + line + pad + fence;
     }
 
-    private static string Text(string value)
+    // In a table a pipe ends the cell even inside a code span, unless a backslash escapes it. The table reads
+    // backslashes in pairs first, so a pipe after an even number of them gets one more.
+    private static string Cell(string value)
     {
-        var text = new StringBuilder();
-        foreach (var c in OneLine(value))
+        var cell = new StringBuilder();
+        var backslashes = 0;
+        foreach (var c in Code(value))
         {
-            if (c is '\\' or '`' or '*' or '_' or '[' or ']' or '<' or '>' or '#' or '|' or '~' or '!' or '&')
-                text.Append('\\');
-            text.Append(c);
+            if (c == '|' && backslashes % 2 == 0)
+                cell.Append('\\');
+            cell.Append(c);
+            backslashes = c == '\\' ? backslashes + 1 : 0;
         }
-        return text.ToString();
+        return cell.ToString();
     }
 
     private static string OneLine(string value) =>
