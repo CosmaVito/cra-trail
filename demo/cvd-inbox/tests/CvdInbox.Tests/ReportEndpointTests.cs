@@ -50,10 +50,27 @@ public class ReportEndpointTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.NotNull((await response.Content.ReadFromJsonAsync<ReceiptView>(TestJson.Options, TestContext.Current.CancellationToken))?.Receipt);
+        // Shaped like a real receipt, so the bot cannot tell.
+        var receipt = (await response.Content.ReadFromJsonAsync<ReceiptView>(TestJson.Options, TestContext.Current.CancellationToken))!.Receipt;
+        Assert.Matches("^[0-9a-f]{4}(-[0-9a-f]{4}){7}$", receipt);
         Assert.Equal(0, await app.WithDbAsync(db => db.Reports.CountAsync()));
         var trap = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1102);
         Assert.Contains("203.0.113.7", trap.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id == 1101);
+    }
+
+    [Fact]
+    public async Task An_invalid_report_gets_the_validation_problem_even_with_the_trap_filled()
+    {
+        await using var app = new InboxApp();
+
+        var response = await app.CreateBrowser(peer: "203.0.113.7").PostAsJsonAsync("/api/reports",
+            new { product = "", version = "1", description = "too short", contact = "", website = "http://spam.example" },
+            TestContext.Current.CancellationToken);
+
+        // Otherwise the status code would tell a bot which field is the trap: 201 for an invalid report means it was caught.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id == 1102);
     }
 
     [Fact]

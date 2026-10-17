@@ -36,31 +36,43 @@ public static class ReportInput
         var problem = text.Length == 0 ? "This field is required."
             : text.Length < min ? $"Use at least {min} characters."
             : text.Length > max ? $"Use at most {max} characters."
-            : HasForbiddenCharacters(text, multiline) ? "Remove control characters and invisible formatting characters."
+            : FindHidden(text, multiline) is { } hidden ? $"Remove the hidden character U+{hidden.Value:X4}."
             : null;
         if (problem is not null)
             errors[name] = [problem];
         return text;
     }
 
-    // Control characters, bidi overrides and other invisible characters (zero-width spaces, tag characters, Unicode line
-    // and paragraph separators) can hide or reorder text on the operator's screen (Trojan Source). Runes, not chars,
-    // so characters outside the Basic Multilingual Plane, such as the tag characters, are checked too.
-    public static bool HasForbiddenCharacters(string text, bool multiline)
+    // The first character that can hide or reorder text on the operator's screen (Trojan Source), or null: control
+    // characters, bidi overrides and other invisible characters (zero-width spaces, tag characters, Unicode line and
+    // paragraph separators). Runes, not chars, so characters outside the Basic Multilingual Plane are checked too.
+    public static Rune? FindHidden(string text, bool multiline)
     {
+        Rune? previous = null;
         foreach (var rune in text.EnumerateRunes())
         {
-            var forbidden = Rune.GetUnicodeCategory(rune) switch
+            var hidden = rune.Value switch
             {
-                UnicodeCategory.Control => !(multiline && rune.Value is '\n' or '\r' or '\t'),
-                // Zero-width non-joiner and joiner stay: emoji sequences and scripts such as Persian need them.
-                UnicodeCategory.Format => rune.Value is not (0x200C or 0x200D),
-                UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator => true,
-                _ => false,
+                // A variation selector picks the text or emoji form of the character before it. Leading or stacked, it only hides.
+                >= 0xFE00 and <= 0xFE0F => previous is not { } before || IsVariationSelector(before),
+                >= 0xE0100 and <= 0xE01EF => true,
+                // Hangul fillers are letters that draw nothing.
+                0x115F or 0x1160 or 0x3164 or 0xFFA0 => true,
+                _ => Rune.GetUnicodeCategory(rune) switch
+                {
+                    UnicodeCategory.Control => !(multiline && rune.Value is '\n' or '\r' or '\t'),
+                    // Zero-width non-joiner and joiner stay: emoji sequences and scripts such as Persian need them.
+                    UnicodeCategory.Format => rune.Value is not (0x200C or 0x200D),
+                    UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator => true,
+                    _ => false,
+                },
             };
-            if (forbidden)
-                return true;
+            if (hidden)
+                return rune;
+            previous = rune;
         }
-        return false;
+        return null;
     }
+
+    private static bool IsVariationSelector(Rune rune) => rune.Value is >= 0xFE00 and <= 0xFE0F;
 }

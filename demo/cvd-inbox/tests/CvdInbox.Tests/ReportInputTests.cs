@@ -30,19 +30,17 @@ public class ReportInputTests
     [InlineData("description", 19)]
     [InlineData("description", 20_001)]
     [InlineData("contact", 201)]
-    public void Lengths_are_checked(string field, int length)
-    {
-        var text = new string('a', length);
-        var report = field switch
-        {
-            "product" => Report(product: text),
-            "version" => Report(version: text),
-            "description" => Report(description: text),
-            _ => Report(contact: text),
-        };
+    public void Lengths_are_checked(string field, int length) =>
+        Assert.Equal(new[] { field }, ReportInput.Validate(ReportWith(field, new string('a', length)), out _).Keys);
 
-        Assert.Equal(new[] { field }, ReportInput.Validate(report, out _).Keys);
-    }
+    [Theory]
+    [InlineData("product", ReportInput.ProductMax)]
+    [InlineData("version", ReportInput.VersionMax)]
+    [InlineData("description", ReportInput.DescriptionMin)]
+    [InlineData("description", ReportInput.DescriptionMax)]
+    [InlineData("contact", ReportInput.ContactMax)]
+    public void Lengths_at_the_limits_are_accepted(string field, int length) =>
+        Assert.Empty(ReportInput.Validate(ReportWith(field, new string('a', length)), out _));
 
     [Theory]
     [InlineData("Widget\u202E")]
@@ -76,12 +74,34 @@ public class ReportInputTests
         Assert.Contains("description", ReportInput.Validate(Report(description: $"Steps to reproduce{hidden} the bug here"), out _).Keys);
     }
 
+    // Soft hyphen, stacked or leading variation selectors, the supplementary variation selectors, a Hangul filler.
+    [Theory]
+    [InlineData("Wid\x00ADget", "U+00AD")]
+    [InlineData("Widget \x2764\xFE0F\xFE0F", "U+FE0F")]
+    [InlineData("\xFE0F Widget", "U+FE0F")]
+    [InlineData("Widget \U000E0100", "U+E0100")]
+    [InlineData("Wid\x3164get", "U+3164")]
+    public void The_message_names_the_hidden_character(string product, string code) =>
+        Assert.Equal(new[] { $"Remove the hidden character {code}." }, ReportInput.Validate(Report(product: product), out _)["product"]);
+
+    [Fact]
+    public void A_variation_selector_after_a_character_is_accepted() =>
+        Assert.Empty(ReportInput.Validate(Report(product: "Widget \x2764\xFE0F"), out _));
+
     // Emoji sequences and scripts such as Persian need them.
     [Theory]
     [InlineData("\u200C")]
     [InlineData("\u200D")]
     public void Zero_width_joiners_are_allowed(string joiner) =>
         Assert.Empty(ReportInput.Validate(Report(product: $"Widget \U0001F469{joiner}\U0001F4BB"), out _));
+
+    private static NewReport ReportWith(string field, string text) => field switch
+    {
+        "product" => Report(product: text),
+        "version" => Report(version: text),
+        "description" => Report(description: text),
+        _ => Report(contact: text),
+    };
 
     private static NewReport Report(
         string? product = "Example Product",

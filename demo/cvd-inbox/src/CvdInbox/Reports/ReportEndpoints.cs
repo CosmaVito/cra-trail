@@ -24,16 +24,17 @@ public static class ReportEndpoints
     private static async Task<IResult> SubmitAsync(
         NewReport input, InboxDb db, TimeProvider time, SecurityEvents events, HttpContext context, CancellationToken cancellationToken)
     {
-        // People never see the trap field; bots fill it. They get the usual answer and learn nothing.
+        var errors = ReportInput.Validate(input, out var fields);
+        if (errors.Count > 0)
+            return Results.ValidationProblem(errors);
+
+        // People never see the trap field; bots fill it. The check comes after the validation, so a bot gets the
+        // answer a valid report gets, and an invalid one gets the same 400 with or without the trap.
         if (!string.IsNullOrEmpty(input.Website))
         {
             events.TrapFilled(SecurityEvents.ClientAddress(context));
             return Created(ReceiptCode.Create());
         }
-
-        var errors = ReportInput.Validate(input, out var fields);
-        if (errors.Count > 0)
-            return Results.ValidationProblem(errors);
 
         var receipt = ReceiptCode.Create();
         var now = time.GetUtcNow().UtcDateTime;
