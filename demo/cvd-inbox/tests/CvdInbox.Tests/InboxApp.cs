@@ -97,7 +97,12 @@ public sealed class InboxApp : WebApplicationFactory<Program>
         builder.UseEnvironment("Production");
         foreach (var (key, value) in settings)
             builder.UseSetting(key, value);
-        builder.ConfigureLogging(logging => logging.AddFakeLogging());
+        // Only the captured logs: the console logger would print every record into the test output.
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddFakeLogging();
+        });
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(logs);

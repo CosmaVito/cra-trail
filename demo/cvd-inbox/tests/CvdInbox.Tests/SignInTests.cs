@@ -59,6 +59,7 @@ public class SignInTests
         Assert.Contains("; path=/", cookie, StringComparison.Ordinal);
         Assert.DoesNotContain("domain=", cookie, StringComparison.Ordinal);
         Assert.DoesNotContain("expires=", cookie, StringComparison.Ordinal);
+        Assert.DoesNotContain("max-age=", cookie, StringComparison.Ordinal);
         var session = await client.GetFromJsonAsync<SessionView>("/api/auth/session", TestJson.Options, TestContext.Current.CancellationToken);
         Assert.Equal("alice", session!.Operator);
         var signedIn = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1001);
@@ -79,6 +80,42 @@ public class SignInTests
             new[] { OperatorSignIn.AntiforgeryCookie.ToLowerInvariant(), OperatorSignIn.TokenCookie.ToLowerInvariant() },
             cookies.Select(c => c[..c.IndexOf('=', StringComparison.Ordinal)]).Order(StringComparer.Ordinal).ToArray());
         Assert.All(cookies, cookie => Assert.Contains("; secure", cookie, StringComparison.Ordinal));
+        Assert.All(cookies, cookie => Assert.Contains("; samesite=strict", cookie, StringComparison.Ordinal));
+        Assert.All(cookies, cookie => Assert.Contains("; path=/", cookie, StringComparison.Ordinal));
+        // The client script reads the request token from its cookie; the antiforgery cookie stays out of its reach.
+        Assert.Contains("; httponly", cookies.Single(c => c.StartsWith(OperatorSignIn.AntiforgeryCookie.ToLowerInvariant() + "=", StringComparison.Ordinal)), StringComparison.Ordinal);
+        Assert.DoesNotContain("; httponly", cookies.Single(c => c.StartsWith(OperatorSignIn.TokenCookie.ToLowerInvariant() + "=", StringComparison.Ordinal)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_antiforgery_cookie_alone_is_not_enough()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser(peer: "198.51.100.7");
+        await Browser.RefreshTokenAsync(client);
+        client.DefaultRequestHeaders.Remove(OperatorSignIn.TokenHeader);
+
+        var response = await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var rejected = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1104);
+        Assert.Contains("198.51.100.7", rejected.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_token_from_before_sign_out_stops_working_after_it()
+    {
+        await using var app = App();
+        var client = await Browser.SignedInAsync(app);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+
+        var stale = await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, stale.StatusCode);
+
+        await Browser.RefreshTokenAsync(client);
+        var fresh = await client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = InboxApp.AlicePassword }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NoContent, fresh.StatusCode);
     }
 
     [Fact]
