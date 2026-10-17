@@ -94,6 +94,36 @@ public class InboxEndpointTests
     }
 
     [Fact]
+    public async Task Disclosing_a_fixed_report_closes_it()
+    {
+        await using var app = new InboxApp();
+        var id = await app.AddReportAsync(TestData.Report(app.Time.GetUtcNow().UtcDateTime, status: ReportStatus.Fixed));
+        var client = await Browser.SignedInAsync(app);
+
+        var disclosed = await (await client.PostAsJsonAsync($"/api/inbox/{id}/status", new { status = "disclosed" }, Ct))
+            .Content.ReadFromJsonAsync<ReportDetail>(TestJson.Options, Ct);
+
+        Assert.Equal(ReportStatus.Disclosed, disclosed!.Status);
+        Assert.Equal(app.Time.GetUtcNow().UtcDateTime, disclosed.ClosedAt);
+    }
+
+    [Fact]
+    public async Task Parallel_moves_from_one_status_let_exactly_one_through()
+    {
+        await using var app = new InboxApp();
+        var id = await app.AddReportAsync(TestData.Report(app.Time.GetUtcNow().UtcDateTime));
+        var client = await Browser.SignedInAsync(app);
+
+        // Task.Run: the SQLite calls complete synchronously, so a bare WhenAll would send the requests one by one.
+        var answers = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
+            (await client.PostAsJsonAsync($"/api/inbox/{id}/status", new { status = "triage" }, Ct)).StatusCode)));
+
+        Assert.Single(answers, answer => answer == HttpStatusCode.OK);
+        Assert.Equal(7, answers.Count(answer => answer == HttpStatusCode.Conflict));
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1201);
+    }
+
+    [Fact]
     public async Task Notes_need_text_without_control_characters()
     {
         await using var app = new InboxApp();
@@ -121,9 +151,23 @@ public class InboxEndpointTests
         client.DefaultRequestHeaders.Remove(OperatorSignIn.TokenHeader);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync($"/api/inbox/{id}/status", new { status = "triage" }, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync($"/api/inbox/{id}/notes", new { text = "Fixed in 1.2.4." }, Ct)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.DeleteAsync($"/api/inbox/{id}", Ct)).StatusCode);
         // Reading needs no token.
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/inbox/{id}", Ct)).StatusCode);
+        var detail = await client.GetFromJsonAsync<ReportDetail>($"/api/inbox/{id}", TestJson.Options, Ct);
+        Assert.Equal(ReportStatus.New, detail!.Status);
+        Assert.Empty(detail.Notes);
+        Assert.Equal(3, app.SecurityEvents().Count(e => e.Id.Id == 1104));
+    }
+
+    [Fact]
+    public async Task Deleting_a_report_that_does_not_exist_gets_404()
+    {
+        await using var app = new InboxApp();
+        var client = await Browser.SignedInAsync(app);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync("/api/inbox/999", Ct)).StatusCode);
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id == 1203);
     }
 
     [Fact]

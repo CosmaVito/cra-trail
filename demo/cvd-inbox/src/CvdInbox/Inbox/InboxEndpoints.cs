@@ -73,7 +73,7 @@ public static class InboxEndpoints
         if (change.Status is not { } target)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Choose the new status."] });
 
-        var report = await db.Reports.Include(r => r.Notes).SingleOrDefaultAsync(r => r.Id == id, cancellationToken);
+        var report = await db.Reports.AsNoTracking().Include(r => r.Notes).SingleOrDefaultAsync(r => r.Id == id, cancellationToken);
         if (report is null)
             return NoSuchReport();
         if (!ReportWorkflow.CanMove(report.Status, target))
@@ -81,11 +81,20 @@ public static class InboxEndpoints
 
         var now = time.GetUtcNow().UtcDateTime;
         var from = report.Status;
+        // The contact retention clock starts when the report closes, and stops if it is reopened.
+        DateTime? closedAt = ReportWorkflow.IsClosed(target) ? now : null;
+        // Only from the status read above: when two operators move the same report, the second one gets a 409.
+        var moved = await db.Reports.Where(r => r.Id == id && r.Status == from)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(r => r.Status, target)
+                .SetProperty(r => r.UpdatedAt, now)
+                .SetProperty(r => r.ClosedAt, closedAt), cancellationToken);
+        if (moved == 0)
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Another operator changed this report meanwhile. Reload it and try again.");
+
         report.Status = target;
         report.UpdatedAt = now;
-        // The contact retention clock starts when the report closes, and stops if it is reopened.
-        report.ClosedAt = ReportWorkflow.IsClosed(target) ? now : null;
-        await db.SaveChangesAsync(cancellationToken);
+        report.ClosedAt = closedAt;
         events.StatusChanged(report.Id, from, target, user.Identity!.Name!);
         return Results.Ok(Detail(report));
     }
