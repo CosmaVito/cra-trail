@@ -65,4 +65,10 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1303, Level = LogLevel.Error, Message = "Truncating the write-ahead log failed; the next sweep tries again.")]
     public partial void TruncateFailed(Exception exception);
+
+    [LoggerMessage(EventId = 1401, Level = LogLevel.Warning, Message = "security.txt expires on {Expires:yyyy-MM-dd}; set Disclosure:Expires to a later date and restart.")]
+    public partial void SecurityTxtExpiresSoon(DateTimeOffset expires);
+
+    [LoggerMessage(EventId = 1402, Level = LogLevel.Error, Message = "security.txt expired on {Expires:yyyy-MM-dd}; set Disclosure:Expires to a later date and restart.")]
+    public partial void SecurityTxtExpired(DateTimeOffset expires);
 }

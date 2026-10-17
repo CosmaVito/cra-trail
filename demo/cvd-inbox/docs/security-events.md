@@ -23,6 +23,8 @@ CVD Inbox writes these events to standard output as JSON lines, each with a UTC 
 | 1301 | Information | Contacts erased after the retention period | number of reports |
 | 1302 | Error | Erasing expired contacts failed; the next sweep tries again | the exception |
 | 1303 | Error | Truncating the write-ahead log failed; the next sweep tries again | the exception |
+| 1401 | Warning | security.txt expires within 30 days; logged at start and then every day | expiry date |
+| 1402 | Error | security.txt has expired while the server was running; logged every day until a restart with a later date | expiry date |
 
 Events 1005 and 1006 are written by the `create-operator` and `remove-operator` processes, not by the server. When you run a command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
 

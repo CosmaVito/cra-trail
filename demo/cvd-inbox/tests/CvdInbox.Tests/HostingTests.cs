@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using CvdInbox.Hosting;
 using Microsoft.AspNetCore.Hosting;
@@ -30,11 +31,13 @@ public class HostingTests
         Assert.Equal("DENY", Header(response, "X-Frame-Options"));
         Assert.Equal("no-referrer", Header(response, "Referrer-Policy"));
         Assert.Equal("no-store", Header(response, "Cache-Control"));
+        Assert.Equal("camera=(), geolocation=(), microphone=()", Header(response, "Permissions-Policy"));
+        Assert.Equal("same-origin", Header(response, "Cross-Origin-Opener-Policy"));
         Assert.False(response.Headers.Contains("Server"));
     }
 
     [Fact]
-    public async Task Bodies_over_128_KiB_are_refused()
+    public async Task Bodies_over_128_KiB_are_refused_with_a_problem()
     {
         await using var app = new InboxApp();
         using var content = new StringContent(new string('x', 200_000), Encoding.UTF8, "application/json");
@@ -42,6 +45,35 @@ public class HostingTests
         var response = await app.CreateBrowser().PostAsync("/api/nothing-here", content, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task A_body_of_exactly_128_KiB_is_let_through()
+    {
+        await using var app = new InboxApp();
+        using var content = new StringContent(new string('x', (int)BodySizeLimit.MaxBytes), Encoding.ASCII, "application/json");
+
+        var response = await app.CreateBrowser().PostAsync("/api/nothing-here", content, TestContext.Current.CancellationToken);
+
+        Assert.Equal(BodySizeLimit.MaxBytes, content.Headers.ContentLength);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Errors_without_a_body_get_a_problem_too()
+    {
+        await using var app = new InboxApp(new Dictionary<string, string?> { ["RateLimits:Lookups:PermitLimit"] = "1" });
+        var client = app.CreateBrowser();
+
+        var unauthorized = await client.GetAsync("/api/inbox", TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync("/api/reports/status", new { receipt = "" }, TestContext.Current.CancellationToken);
+        var limited = await client.PostAsJsonAsync("/api/reports/status", new { receipt = "" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal("application/problem+json", unauthorized.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.Equal("application/problem+json", limited.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]

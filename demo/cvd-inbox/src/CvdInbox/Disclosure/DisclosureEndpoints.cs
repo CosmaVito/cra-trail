@@ -28,7 +28,11 @@ public static class DisclosureEndpoints
                 "Disclosure:PreferredLanguages is required.")
             .Validate(o => o.AcknowledgeWithinDays > 0 && o.DisclosureAfterDays > 0,
                 "Disclosure:AcknowledgeWithinDays and Disclosure:DisclosureAfterDays must be positive.")
+            // A line break would add fields of its own to security.txt.
+            .Validate(o => o.Contact.TrueForAll(IsOneLine) && IsOneLine(o.PreferredLanguages),
+                "Disclosure:Contact and Disclosure:PreferredLanguages must be single lines without control characters.")
             .ValidateOnStart();
+        services.AddHostedService<SecurityTxtExpiry>();
         return services;
     }
 
@@ -59,6 +63,8 @@ public static class DisclosureEndpoints
         && uri.Query.Length == 0
         && uri.Fragment.Length == 0
         && uri.UserInfo.Length == 0;
+
+    private static bool IsOneLine(string value) => !value.Any(char.IsControl);
 
     private static bool IsContactUri(string value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "mailto" or "tel" or "https";

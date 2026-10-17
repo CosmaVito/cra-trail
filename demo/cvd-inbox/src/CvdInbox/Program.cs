@@ -53,6 +53,8 @@ await app.Services.PrepareDatabaseAsync();
 app.UseTrustedProxies();
 app.UseCookiePolicy(new CookiePolicyOptions { Secure = CookieSecurePolicy.Always });
 app.UseExceptionHandler();
+// A problem body for every error that has none: 401 from the cookie handler, 413, 429 from the rate limiter.
+app.UseStatusCodePages();
 app.UseSecurityHeaders();
 app.UseBodySizeLimit();
 app.UseStaticFiles(ClientFiles.Options());

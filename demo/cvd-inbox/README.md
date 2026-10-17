@@ -57,7 +57,7 @@ Settings come from environment variables (`Section__Key`) or `appsettings.json`.
 | Setting | Default | Meaning |
 |---|---|---|
 | `Disclosure__PublicOrigin` | none, required | https origin where people reach the inbox. security.txt is built from it. |
-| `Disclosure__Expires` | none, required | Expiry of security.txt, a date in the future. RFC 9116 asks for less than a year ahead. The app does not start once it has passed. |
+| `Disclosure__Expires` | none, required | Expiry of security.txt, a date in the future. RFC 9116 asks for less than a year ahead. The app does not start once it has passed. From 30 days before, it logs event 1401 every day; a server still running after the date logs event 1402. |
 | `Disclosure__Contact__0`, `__1`, ... | none | More contacts after the report form: `mailto:`, `tel:` or `https:` URIs. |
 | `Disclosure__PreferredLanguages` | `en` | Languages you read reports in. |
 | `Disclosure__AcknowledgeWithinDays` | `5` | Shown on the policy page. |
