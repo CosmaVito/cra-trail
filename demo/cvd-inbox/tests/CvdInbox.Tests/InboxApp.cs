@@ -22,13 +22,17 @@ public sealed class InboxApp : WebApplicationFactory<Program>
 
     private readonly bool retentionSweep;
 
+    private readonly Action<IServiceCollection>? testServices;
+
     // Owned by the test, not by the app's services: its records outlive a host that was disposed after a failed start.
     private readonly FakeLogCollector logs = new();
 
     // The background retention sweep runs only when a test asks for it: its sweeps and log truncates would race the test's own steps.
-    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = false)
+    // testServices runs last, so a test can replace any service of the app.
+    public InboxApp(IReadOnlyDictionary<string, string?>? overrides = null, bool retentionSweep = false, Action<IServiceCollection>? testServices = null)
     {
         this.retentionSweep = retentionSweep;
+        this.testServices = testServices;
         DataDirectory = Directory.CreateTempSubdirectory("cvd-inbox-").FullName;
         settings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
@@ -101,6 +105,7 @@ public sealed class InboxApp : WebApplicationFactory<Program>
             services.AddSingleton<IStartupFilter, TestPeerAddress>();
             if (!retentionSweep)
                 services.Remove(services.Single(d => !d.IsKeyedService && d.ImplementationType == typeof(CvdInbox.Retention.RetentionService)));
+            testServices?.Invoke(services);
         });
     }
 

@@ -40,7 +40,7 @@ There is no default account and no setup page. Create operators on the server:
 ./cvd-inbox create-operator <name> [--password-stdin]
 ```
 
-Names have 2 to 32 characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. On success it prints the path of the database file it wrote to. Exit codes: 0 created, 1 refused, 2 wrong usage.
+Names have 2 to 32 ASCII characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters, counted as Unicode code points, so an emoji counts as one. Passwords are compared as typed, without Unicode normalization, because the app runs without ICU: an accented letter typed as one code point does not match the same letter typed as a base letter and a combining accent. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. On success it prints the path of the database file it wrote to. Exit codes: 0 created, 1 refused, 2 wrong usage.
 
 ## Upgrade
 

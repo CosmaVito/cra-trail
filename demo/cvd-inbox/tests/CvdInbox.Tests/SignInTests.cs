@@ -1,8 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CvdInbox.Data;
 using CvdInbox.Operators;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CvdInbox.Tests;
 
@@ -10,6 +14,29 @@ public class SignInTests
 {
     private const string WrongPassword = "wrong password, long enough";
     private const string TrustedProxy = "10.0.0.1";
+
+    [Fact]
+    public async Task A_failed_sign_in_is_counted_even_when_the_client_leaves_during_the_check()
+    {
+        var hasher = new GateHasher();
+        await using var app = new InboxApp(testServices: services => services.AddSingleton<IPasswordHasher<Operator>>(hasher));
+        await app.CreateOperatorAsync();
+        var client = app.CreateBrowser();
+        await Browser.RefreshTokenAsync(client);
+        using var leave = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+        var signIn = client.PostAsJsonAsync("/api/auth/sign-in", new { name = "alice", password = WrongPassword }, leave.Token);
+        await hasher.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await leave.CancelAsync();
+        hasher.Released.SetResult();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => signIn);
+
+        // The server finishes the request after the client has gone.
+        for (var waited = 0; waited < 100 && !app.SecurityEvents().Any(e => e.Id.Id == 1002); waited++)
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1002);
+        Assert.Equal(1, await app.WithDbAsync(db => db.Operators.Select(o => o.FailedSignIns).SingleAsync()));
+    }
 
     [Fact]
     public async Task Signing_in_sets_a_host_only_secure_strict_session_cookie()
