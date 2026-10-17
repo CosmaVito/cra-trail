@@ -26,7 +26,7 @@ internal static class GateCommand
             return ExitCodes.VerificationFailed;
         }
 
-        var markdown = MarkdownSummary.Render(evaluation, pack.Manifest);
+        var markdown = MarkdownSummary.Render(evaluation, pack.Manifest, pack.Product);
         io.Out.Write(markdown);
         var target = summaryPath ?? io.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
         if (!string.IsNullOrWhiteSpace(target))

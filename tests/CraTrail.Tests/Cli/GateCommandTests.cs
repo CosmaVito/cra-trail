@@ -28,7 +28,7 @@ public class GateCommandTests
         CliPacks.Pack(run, "grype-kev.json");
 
         Assert.Equal(ExitCodes.GateBlocked, run.Run("gate", "out/pack.zip"));
-        Assert.Contains("**no-kev-without-vex** (fail)", run.Out.ToString(), StringComparison.Ordinal);
+        Assert.Contains("**`no-kev-without-vex`** (fail)", run.Out.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
