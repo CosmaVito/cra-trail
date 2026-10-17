@@ -114,6 +114,10 @@ public class PackBuilderTests
     [InlineData(EvidenceKinds.ProductSbom, "bom.json", "{ \"bomFormat\": \"SPDX\" }", "bom.json is not a valid product-sbom input: ")]
     [InlineData(EvidenceKinds.SastSarif, "x.sarif", "not json", "x.sarif is not a valid sast-sarif input: ")]
     [InlineData(EvidenceKinds.Vex, "v.json", "{ }", "v.json is not a valid vex input: ")]
+    [InlineData(EvidenceKinds.ProductSbom, "bom.json", "{ \"bomFormat\": \"CycloneDX\", \"specVersion\": \"1.5\" }",
+        "bom.json is not a valid product-sbom input: Expected CycloneDX 1.6, found specVersion '1.5'.")]
+    [InlineData(EvidenceKinds.Sbom, "backend.cdx.json", "{ \"bomFormat\": \"CycloneDX\" }",
+        "backend.cdx.json is not a valid sbom input: Expected CycloneDX 1.6, found specVersion 'none'.")]
     public void Invalid_inputs_are_rejected(string kind, string fileName, string content, string expectedStart)
     {
         var request = Request(

@@ -137,9 +137,15 @@ public static class PackBuilder
             switch (input.Kind)
             {
                 case EvidenceKinds.ProductSbom or EvidenceKinds.Sbom:
+                {
                     if (JsonAccess.Text(JsonAccess.Child(node, "bomFormat")) != "CycloneDX")
                         throw new FormatException("Expected a CycloneDX JSON document.");
+                    // ADR 0003: every SBOM in a pack is CycloneDX 1.6, the version the profiles and BSI TR-03183-2 v2.1.0 are written for.
+                    var version = JsonAccess.Text(JsonAccess.Child(node, "specVersion"));
+                    if (version != "1.6")
+                        throw new FormatException($"Expected CycloneDX 1.6, found specVersion '{version ?? "none"}'. Convert it to 1.6 first, for example with cyclonedx-cli.");
                     break;
+                }
                 case EvidenceKinds.Vex:
                     OpenVex.ParseStatements(node);
                     break;
