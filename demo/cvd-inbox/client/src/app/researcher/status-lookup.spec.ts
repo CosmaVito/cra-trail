@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { clickButton, settle, textOf, tick, typeInto } from '../../testing/dom';
+import { clickButton, element, settle, textOf, tick, typeInto } from '../../testing/dom';
 import { StatusLookup } from './status-lookup';
 
 describe('StatusLookup', () => {
@@ -18,7 +18,10 @@ describe('StatusLookup', () => {
     await fixture.whenStable();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    (fixture?.nativeElement as HTMLElement | undefined)?.remove();
+    http.verify();
+  });
 
   it('looks up the code as typed and shows the status', async () => {
     typeInto(fixture, 'receipt', '0123 4567 89AB CDEF 0123 4567 89ab cdef');
@@ -31,6 +34,28 @@ describe('StatusLookup', () => {
     await settle(fixture);
 
     expect(textOf(fixture, '[data-testid=report-status]')).toBe('Triage');
+  });
+
+  it('clears the code from the field once the status is shown', async () => {
+    typeInto(fixture, 'receipt', '0123456789abcdef0123456789abcdef');
+    clickButton(fixture, 'Check status');
+    await tick();
+    http.expectOne('/api/reports/status').flush({ status: 'new', receivedAt: '2026-10-15T09:00:00Z', updatedAt: '2026-10-15T09:00:00Z' });
+    await settle(fixture);
+
+    expect(element(fixture).querySelector<HTMLInputElement>('#receipt')?.value).toBe('');
+    expect(textOf(fixture, '[data-testid=report-status]')).toBe('New');
+  });
+
+  it('moves focus to the message when the lookup fails', async () => {
+    document.body.appendChild(element(fixture));
+    typeInto(fixture, 'receipt', '0123456789abcdef0123456789abcdef');
+    clickButton(fixture, 'Check status');
+    await tick();
+    http.expectOne('/api/reports/status').flush({ title: 'No report matches this receipt code.' }, { status: 404, statusText: 'Not Found' });
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(element(fixture).querySelector('[role=alert]'));
   });
 
   it('says when no report matches', async () => {
@@ -70,6 +95,6 @@ describe('StatusLookup', () => {
   it('exposes the receipt field as required', () => {
     const field = fixture.nativeElement.querySelector('#receipt') as HTMLInputElement;
 
-    expect(field.required || field.getAttribute('aria-required') === 'true').toBe(true);
+    expect(field.required).toBe(true);
   });
 });

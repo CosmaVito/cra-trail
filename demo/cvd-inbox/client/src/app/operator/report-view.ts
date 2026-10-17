@@ -51,7 +51,7 @@ export class ReportView {
           } catch (error) {
             const fieldErrors = serverFieldErrors(error, { text: field.text });
             if (fieldErrors) return fieldErrors;
-            this.failure.set(describeFailure(error));
+            this.showFailure(error);
           }
           return undefined;
         },
@@ -73,9 +73,12 @@ export class ReportView {
       // The button that was clicked is gone, so focus would fall to the page.
       this.focusAfterRender(this.statusHeading);
     } catch (error) {
-      this.failure.set(describeFailure(error));
+      this.showFailure(error);
       // 409: the status changed under this operator, so the buttons on the page are stale.
-      if (error instanceof HttpErrorResponse && error.status === 409) await this.load();
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        await this.load({ keepFailure: true });
+        this.focusAfterRender(this.statusHeading);
+      }
     }
   }
 
@@ -94,7 +97,7 @@ export class ReportView {
       await this.api.deleteReport(this.id);
       await this.router.navigateByUrl('/operator');
     } catch (error) {
-      this.failure.set(describeFailure(error));
+      this.showFailure(error);
       this.confirmingDelete.set(false);
     }
   }
@@ -103,15 +106,27 @@ export class ReportView {
     afterNextRender(() => target()?.nativeElement.focus(), { injector: this.injector });
   }
 
-  private async load(): Promise<void> {
+  /** keepFailure: after a 409, its message says more than a failed reload, unless the report is gone. */
+  private async load(options: { keepFailure?: boolean } = {}): Promise<void> {
     try {
       this.report.set(await this.api.report(this.id));
     } catch (error) {
-      this.failure.set(
-        error instanceof HttpErrorResponse && error.status === 404
-          ? 'This report does not exist. It may have been deleted.'
-          : describeFailure(error),
-      );
+      if (options.keepFailure && !isNotFound(error)) return;
+      this.showFailure(error);
     }
   }
+
+  /** A 404 means another operator deleted the report: the page drops it instead of offering buttons that cannot work. */
+  private showFailure(error: unknown): void {
+    if (isNotFound(error)) {
+      this.report.set(null);
+      this.failure.set('This report does not exist. It may have been deleted.');
+    } else {
+      this.failure.set(describeFailure(error));
+    }
+  }
+}
+
+function isNotFound(error: unknown): boolean {
+  return error instanceof HttpErrorResponse && error.status === 404;
 }

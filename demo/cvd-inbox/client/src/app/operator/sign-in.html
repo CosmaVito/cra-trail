@@ -1,7 +1,7 @@
 <h1>Operator sign-in</h1>
 
 @if (insecure) {
-  <p class="alert" role="alert">Operator sign-in needs HTTPS.</p>
+  <p class="alert" role="alert" tabindex="-1" #insecureAlert>Operator sign-in needs HTTPS.</p>
   <p>Open this page over HTTPS, or from localhost on the machine that runs the server.</p>
 } @else {
   @if (failure()) {

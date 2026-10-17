@@ -17,6 +17,7 @@ export class ReportForm {
   private readonly api = inject(InboxApi);
   private readonly injector = inject(Injector);
   private readonly receiptHeading = viewChild<ElementRef<HTMLElement>>('receiptHeading');
+  private readonly failureAlert = viewChild<ElementRef<HTMLElement>>('failureAlert');
 
   protected readonly visibleError = visibleError;
   protected readonly receipt = signal('');
@@ -51,6 +52,7 @@ export class ReportForm {
             });
             if (fieldErrors) return fieldErrors;
             this.failure.set(describeFailure(error));
+            afterNextRender(() => this.failureAlert()?.nativeElement.focus(), { injector: this.injector });
           }
           return undefined;
         },

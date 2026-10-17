@@ -40,7 +40,10 @@ describe('ReportView', () => {
     await settle(fixture);
   }
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    (fixture?.nativeElement as HTMLElement | undefined)?.remove();
+    http.verify();
+  });
 
   it('shows the description as text, never as markup', async () => {
     await open(detail);
@@ -100,7 +103,6 @@ describe('ReportView', () => {
 
     expect(textOf(fixture, '#note-error')).toBe('Write the note first.');
     expect(document.activeElement?.id).toBe('note');
-    element(fixture).remove();
   });
 
   it('shows a server field error on the note text and focuses it', async () => {
@@ -111,18 +113,17 @@ describe('ReportView', () => {
     clickButton(fixture, 'Add note');
     await tick();
     http.expectOne('/api/inbox/7/notes').flush(
-      { title: 'One or more validation errors occurred.', errors: { text: ['Remove control characters and invisible formatting characters.'] } },
+      { title: 'One or more validation errors occurred.', errors: { text: ['Remove the hidden character U+202E.'] } },
       { status: 400, statusText: 'Bad Request' },
     );
     await settle(fixture);
 
     const note = element(fixture).querySelector('#note');
-    expect(textOf(fixture, '#note-error')).toBe('Remove control characters and invisible formatting characters.');
+    expect(textOf(fixture, '#note-error')).toBe('Remove the hidden character U+202E.');
     expect(note?.getAttribute('aria-invalid')).toBe('true');
     expect(note?.getAttribute('aria-describedby')).toBe('note-hint note-error');
     expect(document.activeElement).toBe(note);
     expect(element(fixture).querySelector('[role=alert]')).toBeNull();
-    element(fixture).remove();
   });
 
   it('adds a note and clears the field', async () => {
@@ -151,7 +152,6 @@ describe('ReportView', () => {
 
     expect(textOf(fixture, '[role=status]')).toBe('Status changed to Triage');
     expect(document.activeElement?.id).toBe('status-heading');
-    element(fixture).remove();
   });
 
   it('announces an added note', async () => {
@@ -185,6 +185,51 @@ describe('ReportView', () => {
     expect(textOf(fixture, '[role=alert]')).toBe('A report in Accepted cannot move to Triage.');
   });
 
+  it('moves focus to the status heading after the reload', async () => {
+    await open(detail);
+    document.body.appendChild(element(fixture));
+
+    clickButton(fixture, 'Move to Triage');
+    await tick();
+    http.expectOne('/api/inbox/7/status').flush(
+      { title: 'Another operator changed this report meanwhile. Reload it and try again.' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await tick();
+    http.expectOne('/api/inbox/7').flush({ ...detail, status: 'triage', nextStatuses: ['accepted', 'rejected'] });
+    await settle(fixture);
+
+    expect(document.activeElement?.id).toBe('status-heading');
+  });
+
+  it('keeps the conflict message when the reload fails', async () => {
+    await open(detail);
+
+    clickButton(fixture, 'Move to Triage');
+    await tick();
+    http.expectOne('/api/inbox/7/status').flush(
+      { title: 'Another operator changed this report meanwhile. Reload it and try again.' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await tick();
+    http.expectOne('/api/inbox/7').flush(null, { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
+
+    expect(textOf(fixture, '[role=alert]')).toBe('Another operator changed this report meanwhile. Reload it and try again.');
+  });
+
+  it('drops the page when the report is gone', async () => {
+    await open(detail);
+
+    clickButton(fixture, 'Move to Triage');
+    await tick();
+    http.expectOne('/api/inbox/7/status').flush({ title: 'No such report.' }, { status: 404, statusText: 'Not Found' });
+    await settle(fixture);
+
+    expect(element(fixture).querySelectorAll('button')).toHaveLength(0);
+    expect(textOf(fixture, '[role=alert]')).toBe('This report does not exist. It may have been deleted.');
+  });
+
   it('moves focus into the delete confirmation and back on cancel', async () => {
     await open(detail);
     document.body.appendChild(element(fixture));
@@ -196,6 +241,5 @@ describe('ReportView', () => {
     clickButton(fixture, 'Cancel');
     await fixture.whenStable();
     expect(document.activeElement?.textContent?.trim()).toBe('Delete report');
-    element(fixture).remove();
   });
 });

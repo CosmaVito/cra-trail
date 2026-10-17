@@ -20,6 +20,8 @@ describe('SignIn', () => {
     await fixture.whenStable();
   });
 
+  afterEach(() => (fixture?.nativeElement as HTMLElement | undefined)?.remove());
+
   it('signs in and opens the inbox', async () => {
     session.signIn.mockResolvedValue(undefined);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -31,6 +33,18 @@ describe('SignIn', () => {
 
     expect(session.signIn).toHaveBeenCalledWith('alice', 'correct horse battery staple');
     expect(navigate).toHaveBeenCalledWith('/operator');
+    // The password leaves the form model as soon as it has been sent.
+    expect(element(fixture).querySelector<HTMLInputElement>('#password')?.value).toBe('');
+  });
+
+  it('refuses a name of only spaces', async () => {
+    typeInto(fixture, 'name', '   ');
+    typeInto(fixture, 'password', 'correct horse battery staple');
+    clickButton(fixture, 'Sign in');
+    await fixture.whenStable();
+
+    expect(textOf(fixture, '#name-error')).toBe('Enter your operator name.');
+    expect(session.signIn).not.toHaveBeenCalled();
   });
 
   it('gives one message for every refusal and clears the password', async () => {
@@ -55,11 +69,13 @@ describe('SignIn', () => {
       imports: [SignIn],
       providers: [provideRouter([]), { provide: Session, useValue: session }, { provide: SECURE_CONTEXT, useValue: false }],
     }).compileComponents();
-    const insecure = TestBed.createComponent(SignIn);
-    await insecure.whenStable();
+    fixture = TestBed.createComponent(SignIn);
+    document.body.appendChild(element(fixture));
+    await fixture.whenStable();
 
-    expect(textOf(insecure, '[role=alert]')).toBe('Operator sign-in needs HTTPS.');
-    expect(element(insecure).querySelector('form')).toBeNull();
-    expect(element(insecure).querySelector('#password')).toBeNull();
+    expect(textOf(fixture, '[role=alert]')).toBe('Operator sign-in needs HTTPS.');
+    expect(document.activeElement).toBe(element(fixture).querySelector('[role=alert]'));
+    expect(element(fixture).querySelector('form')).toBeNull();
+    expect(element(fixture).querySelector('#password')).toBeNull();
   });
 });

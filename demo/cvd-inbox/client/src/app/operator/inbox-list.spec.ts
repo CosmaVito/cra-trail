@@ -52,4 +52,24 @@ describe('InboxList', () => {
 
     expect(textOf(fixture, '.empty')).toBe('No reports.');
   });
+
+  it('keeps the answer to the last filter when an earlier one comes back later', async () => {
+    http.expectOne('/api/inbox').flush([summary]);
+    await settle(fixture);
+    const select = element(fixture).querySelector<HTMLSelectElement>('#status-filter')!;
+
+    select.value = 'triage';
+    select.dispatchEvent(new Event('change'));
+    select.value = 'new';
+    select.dispatchEvent(new Event('change'));
+    await tick();
+    const triage = http.expectOne((request) => request.params.get('status') === 'triage');
+    http.expectOne((request) => request.params.get('status') === 'new').flush([summary]);
+    await tick();
+    triage.flush([]);
+    await settle(fixture);
+
+    expect(textOf(fixture, 'tbody a')).toBe('Example Product');
+    expect(textOf(fixture, '[role=status]')).toBe('1 report');
+  });
 });

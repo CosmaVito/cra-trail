@@ -1,5 +1,7 @@
 <h1>Inbox</h1>
 
+<p class="visually-hidden" role="status">{{ announcement() }}</p>
+
 <div class="field">
   <label for="status-filter">Show</label>
   <select id="status-filter" #statusFilter (change)="changeFilter(statusFilter.value)">

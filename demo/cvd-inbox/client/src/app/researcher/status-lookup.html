@@ -2,7 +2,7 @@
 <p>Enter the receipt code you got when you sent the report.</p>
 
 @if (failure()) {
-  <p class="alert" role="alert">{{ failure() }}</p>
+  <p class="alert" role="alert" tabindex="-1" #failureAlert>{{ failure() }}</p>
 }
 
 <form [formRoot]="lookupForm">

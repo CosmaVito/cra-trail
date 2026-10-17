@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { FormField, FormRoot, form, pattern, required } from '@angular/forms/signals';
 import { InboxApi } from '../api/inbox-api';
 import { ReportStatusView, statusLabels } from '../api/models';
@@ -16,6 +16,8 @@ import { visibleError } from '../forms/visible-error';
 })
 export class StatusLookup {
   private readonly api = inject(InboxApi);
+  private readonly injector = inject(Injector);
+  private readonly failureAlert = viewChild<ElementRef<HTMLElement>>('failureAlert');
 
   protected readonly labels = statusLabels;
   protected readonly visibleError = visibleError;
@@ -37,6 +39,8 @@ export class StatusLookup {
           this.result.set(null);
           try {
             this.result.set(await this.api.lookUpStatus(field().value().receipt));
+            // The code is the only key to the report: it does not stay on the screen.
+            field().reset({ receipt: '' });
           } catch (error) {
             const fieldErrors = serverFieldErrors(error, { receipt: field.receipt });
             if (fieldErrors) return fieldErrors;
@@ -45,6 +49,7 @@ export class StatusLookup {
                 ? 'No report matches this receipt code. Check it and try again.'
                 : describeFailure(error),
             );
+            afterNextRender(() => this.failureAlert()?.nativeElement.focus(), { injector: this.injector });
           }
           return undefined;
         },

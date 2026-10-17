@@ -33,6 +33,18 @@ describe('Session', () => {
     expect(session.operator()).toBeNull();
   });
 
+  it('tries again after a failed load', async () => {
+    const first = session.ensureLoaded();
+    http.expectOne('/api/auth/session').flush(null, { status: 500, statusText: 'Server Error' });
+    await first;
+
+    const second = session.ensureLoaded();
+    http.expectOne('/api/auth/session').flush({ operator: 'alice' });
+    await second;
+
+    expect(session.operator()).toBe('alice');
+  });
+
   it('fetches a new session, and with it a new request token, after signing in', async () => {
     const signingIn = session.signIn('alice', 'correct horse battery staple');
     const signIn = http.expectOne('/api/auth/sign-in');

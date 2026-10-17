@@ -12,7 +12,11 @@ export class Session {
 
   /** Loads the session once. The call also gives the browser its request token (the XSRF-TOKEN cookie). */
   ensureLoaded(): Promise<void> {
-    this.loading ??= this.refresh().catch(() => this.current.set(null));
+    this.loading ??= this.refresh().catch(() => {
+      this.current.set(null);
+      // Not kept: without this call the browser has no request token, so the next caller tries again.
+      this.loading = null;
+    });
     return this.loading;
   }
 
