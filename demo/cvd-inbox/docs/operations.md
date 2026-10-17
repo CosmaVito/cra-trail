@@ -32,15 +32,20 @@ Without a trusted proxy the headers are ignored: the app sees plain http, so it 
 
 Do not set `ASPNETCORE_FORWARDEDHEADERS_ENABLED`. It adds a second forwarded-headers middleware that trusts these headers from any sender and bypasses the list.
 
-## First operator
+## Operators
 
-There is no default account and no setup page. Create operators on the server:
+There is no default account and no setup page. Create and remove operators on the server:
 
 ```bash
 ./cvd-inbox create-operator <name> [--password-stdin]
+./cvd-inbox remove-operator <name>
 ```
 
-Names have 2 to 32 ASCII characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters, counted as Unicode code points, so an emoji counts as one. Passwords are compared as typed, without Unicode normalization, because the app runs without ICU: an accented letter typed as one code point does not match the same letter typed as a base letter and a combining accent. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. On success it prints the path of the database file it wrote to. Exit codes: 0 created, 1 refused, 2 wrong usage.
+Names have 2 to 32 ASCII characters: lower-case letters, digits, `.`, `_` or `-`, starting with a letter or a digit. Input is trimmed and lower-cased. Passwords need 15 to 128 characters, counted as Unicode code points, so an emoji counts as one. Passwords are compared as typed, without Unicode normalization, because the app runs without ICU: an accented letter typed as one code point does not match the same letter typed as a base letter and a combining accent. With `--password-stdin` the command reads the first line of standard input. Without it, the command generates a 24-character password and prints it once. On success it prints the path of the database file it wrote to.
+
+`remove-operator` deletes the operator and prints the same path. Their sessions end at their next request. Notes they wrote keep their name. To change a password, remove the operator and create it again.
+
+Exit codes of both commands: 0 done, 1 refused or failed, 2 wrong usage.
 
 ## Upgrade
 
@@ -63,6 +68,7 @@ Annex I, Part I, point 2(b) of the Cyber Resilience Act asks for a secure defaul
 - Every cookie the app sets carries `Secure`, through a cookie policy that runs early in the pipeline, after the trusted-proxy middleware. Over plain http to a host other than `localhost`, browsers drop them, and the sign-in is refused anyway.
 - The session cookie `__Host-cvd-session` is `Secure`, `HttpOnly` and `SameSite=Strict`, with no persistent expiry and a one-hour sliding timeout. The request token cookie `XSRF-TOKEN` is readable by the client script, as it has to be, and is `Secure` and `SameSite=Strict`. The antiforgery cookie `__Host-cvd-antiforgery` is `Secure`, `HttpOnly` and `SameSite=Strict`.
 - Every change made by an operator, and the sign-in itself, needs the request token in the `X-XSRF-TOKEN` header.
+- Every request checks the session against the database. Signing out ends the operator's sessions on every device, and `remove-operator` ends them at the next request.
 - Passwords are stored as PBKDF2-HMAC-SHA512 hashes with 100,000 iterations.
 - A wrong password, an unknown name and a locked account get the same answer: 401 with "Wrong name or password." Five wrong passwords lock the account for 15 minutes. Every failure is counted in the database in one statement, so none is lost under parallel attempts; the sign-in rate limit bounds the guesses already in flight.
 - Reports, status lookups and sign-ins are rate limited per client address.

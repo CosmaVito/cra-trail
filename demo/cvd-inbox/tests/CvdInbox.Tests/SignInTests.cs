@@ -5,6 +5,7 @@ using CvdInbox.Data;
 using CvdInbox.Operators;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -160,6 +161,38 @@ public class SignInTests
         var session = await client.GetFromJsonAsync<SessionView>("/api/auth/session", TestJson.Options, TestContext.Current.CancellationToken);
         Assert.Null(session!.Operator);
         Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1004);
+    }
+
+    [Fact]
+    public async Task Signing_out_ends_the_operators_sessions_in_other_browsers_too()
+    {
+        await using var app = App();
+        var laptop = await Browser.SignedInAsync(app);
+        var phone = await Browser.SignedInAsync(app);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await laptop.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await phone.GetAsync("/api/inbox", TestContext.Current.CancellationToken)).StatusCode);
+        var session = await phone.GetFromJsonAsync<SessionView>("/api/auth/session", TestJson.Options, TestContext.Current.CancellationToken);
+        Assert.Null(session!.Operator);
+    }
+
+    [Fact]
+    public async Task A_session_cookie_copied_before_sign_out_stops_working_after_it()
+    {
+        await using var app = App();
+        await app.CreateOperatorAsync();
+        var jar = new CookieContainerHandler();
+        var client = app.CreateDefaultClient(new Uri("https://localhost"), jar);
+        await Browser.SignInAsync(client);
+        var copied = jar.Container.GetCookies(new Uri("https://localhost"))[OperatorSignIn.SessionCookie]!;
+        var thief = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = false });
+        thief.DefaultRequestHeaders.Add("Cookie", $"{copied.Name}={copied.Value}");
+        Assert.Equal(HttpStatusCode.OK, (await thief.GetAsync("/api/inbox", TestContext.Current.CancellationToken)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/sign-out", null, TestContext.Current.CancellationToken)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await thief.GetAsync("/api/inbox", TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]

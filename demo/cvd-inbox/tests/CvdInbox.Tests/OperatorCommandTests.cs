@@ -1,3 +1,4 @@
+using System.Net;
 using CvdInbox.Data;
 using CvdInbox.Operators;
 
@@ -5,6 +6,32 @@ namespace CvdInbox.Tests;
 
 public class OperatorCommandTests
 {
+    [Fact]
+    public async Task Removes_an_operator_and_ends_their_sessions()
+    {
+        await using var app = new InboxApp();
+        var browser = await Browser.SignedInAsync(app);
+
+        var (exit, output, _) = await RunAsync(app, ["remove-operator", "alice"], "");
+
+        Assert.Equal(0, exit);
+        Assert.Equal($"Removed operator alice from {Path.Combine(app.DataDirectory, DataSetup.DatabaseFile)}. Their sessions have ended.", output.Trim());
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1006);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await browser.GetAsync("/api/inbox", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(SignInOutcome.Failed, (await app.CheckPasswordAsync("alice", InboxApp.AlicePassword)).Outcome);
+    }
+
+    [Fact]
+    public async Task Removing_an_operator_that_does_not_exist_is_refused()
+    {
+        await using var app = new InboxApp();
+
+        var (exit, _, error) = await RunAsync(app, ["remove-operator", "bob"], "");
+
+        Assert.Equal(1, exit);
+        Assert.Equal($"No operator bob in {Path.Combine(app.DataDirectory, DataSetup.DatabaseFile)}.", error.Trim());
+    }
+
     [Fact]
     public async Task Creates_an_operator_with_a_password_from_stdin()
     {
@@ -36,6 +63,9 @@ public class OperatorCommandTests
     [Theory]
     [InlineData(2, "create-operator")]
     [InlineData(2, "create-operator", "alice", "--password")]
+    [InlineData(2, "create-operator", "--password-stdin")]
+    [InlineData(2, "remove-operator")]
+    [InlineData(2, "remove-operator", "alice", "bob")]
     [InlineData(1, "create-operator", "alice", "--password-stdin")]
     public async Task Exit_codes_tell_usage_errors_from_refusals(int expected, params string[] args)
     {
@@ -52,6 +82,7 @@ public class OperatorCommandTests
     [InlineData(true, "remove-operators", "alice")]
     [InlineData(false)]
     [InlineData(false, "create-operator", "alice")]
+    [InlineData(false, "remove-operator", "alice")]
     [InlineData(false, "--urls", "http://127.0.0.1:8080")]
     [InlineData(false, "--urls=http://127.0.0.1:8080")]
     [InlineData(false, "/urls", "http://127.0.0.1:8080")]

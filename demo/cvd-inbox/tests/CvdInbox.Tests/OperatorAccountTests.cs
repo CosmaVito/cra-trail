@@ -51,6 +51,18 @@ public class OperatorAccountTests
     }
 
     [Fact]
+    public async Task Parallel_creates_of_one_name_give_one_operator_and_plain_refusals()
+    {
+        await using var app = new InboxApp();
+
+        // Task.Run: the SQLite calls and the hash complete synchronously, so a bare WhenAll would run them one by one.
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => app.CreateOperatorAsync("alice"))));
+
+        Assert.Single(results, r => r.Succeeded);
+        Assert.All(results.Where(r => !r.Succeeded), r => Assert.Equal("Operator alice already exists.", r.Error));
+    }
+
+    [Fact]
     public async Task Five_wrong_passwords_lock_the_account_for_15_minutes()
     {
         await using var app = new InboxApp();

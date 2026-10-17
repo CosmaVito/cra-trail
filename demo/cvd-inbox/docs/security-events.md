@@ -9,8 +9,9 @@ CVD Inbox writes these events to standard output as JSON lines, each with a UTC 
 | 1001 | Information | Operator signed in | operator, client address |
 | 1002 | Warning | Failed sign-in | name if it belongs to an operator, otherwise `(unknown name)`; client address |
 | 1003 | Warning | Sign-in refused, account locked; also logged for the failure that sets the lock | operator, client address |
-| 1004 | Information | Operator signed out | operator |
+| 1004 | Information | Operator signed out; their sessions on every device have ended | operator |
 | 1005 | Information | Operator created from the command line | operator |
+| 1006 | Warning | Operator removed from the command line; their sessions end at the next request | operator |
 | 1101 | Information | Report received | report id |
 | 1102 | Warning | Report form trap filled, report discarded | client address |
 | 1103 | Warning | Rate limit reached | policy (`reports`, `lookups`, `sign-ins`), client address |
@@ -28,7 +29,7 @@ Two more events come from the retention job, under the log category `CvdInbox.Re
 | 1302 | Erasing expired contacts failed; the next sweep tries again |
 | 1303 | Truncating the write-ahead log failed; the next sweep tries again |
 
-Event 1005 is written by the `create-operator` process, not by the server. When you run the command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
+Events 1005 and 1006 are written by the `create-operator` and `remove-operator` processes, not by the server. When you run a command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
 
 A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. Event 1002 never carries what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
 

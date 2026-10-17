@@ -61,6 +61,7 @@ public sealed class InboxDb(DbContextOptions<InboxDb> options) : DbContext(optio
         {
             account.HasIndex(o => o.Name).IsUnique();
             account.Property(o => o.Name).HasMaxLength(32);
+            account.Property(o => o.SecurityStamp).HasMaxLength(32);
         });
 
         foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetProperties()))

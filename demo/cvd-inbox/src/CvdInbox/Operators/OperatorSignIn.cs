@@ -21,6 +21,7 @@ public static class OperatorSignIn
     public const string AntiforgeryCookie = "__Host-cvd-antiforgery";
     public const string TokenCookie = "XSRF-TOKEN";
     public const string TokenHeader = "X-XSRF-TOKEN";
+    public const string StampClaim = "cvd-inbox:stamp";
 
     private const string UnknownName = "(unknown name)";
 
@@ -53,6 +54,19 @@ public static class OperatorSignIn
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return Task.CompletedTask;
+                };
+                // Every request checks the stamp in the cookie against the database, so signing out and
+                // remove-operator end the operator's sessions on every device.
+                cookie.Events.OnValidatePrincipal = async context =>
+                {
+                    var accounts = context.HttpContext.RequestServices.GetRequiredService<OperatorAccounts>();
+                    var name = context.Principal?.Identity?.Name;
+                    var stamp = context.Principal?.FindFirstValue(StampClaim);
+                    if (!await accounts.IsSessionValidAsync(name, stamp, context.HttpContext.RequestAborted))
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    }
                 };
             });
         services.AddAuthorization();
@@ -114,7 +128,8 @@ public static class OperatorSignIn
         var check = await accounts.CheckPasswordAsync(request.Name, request.Password, cancellationToken);
         if (check.Outcome == SignInOutcome.Succeeded)
         {
-            var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, check.Name!)], CookieAuthenticationDefaults.AuthenticationScheme);
+            var identity = new ClaimsIdentity(
+                [new Claim(ClaimTypes.Name, check.Name!), new Claim(StampClaim, check.Stamp!)], CookieAuthenticationDefaults.AuthenticationScheme);
             await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
             events.SignedIn(check.Name!, client);
             return Results.NoContent();
@@ -131,10 +146,12 @@ public static class OperatorSignIn
         return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Wrong name or password.");
     }
 
-    private static async Task<IResult> HandleSignOutAsync(HttpContext context, SecurityEvents events)
+    private static async Task<IResult> HandleSignOutAsync(HttpContext context, OperatorAccounts accounts, SecurityEvents events)
     {
+        var name = context.User.Identity!.Name!;
+        await accounts.EndSessionsAsync(name);
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        events.SignedOut(context.User.Identity!.Name!);
+        events.SignedOut(name);
         return Results.NoContent();
     }
 }

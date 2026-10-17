@@ -18,15 +18,21 @@ internal static class Browser
         client.DefaultRequestHeaders.Add(OperatorSignIn.TokenHeader, Uri.UnescapeDataString(value));
     }
 
+    // Creates the operator unless it exists, then signs in from a new browser.
     public static async Task<HttpClient> SignedInAsync(InboxApp app, string name = "alice", string password = InboxApp.AlicePassword)
     {
         await app.CreateOperatorAsync(name, password);
         var client = app.CreateBrowser();
+        await SignInAsync(client, name, password);
+        return client;
+    }
+
+    public static async Task SignInAsync(HttpClient client, string name = "alice", string password = InboxApp.AlicePassword)
+    {
         await RefreshTokenAsync(client);
         var response = await client.PostAsJsonAsync("/api/auth/sign-in", new { name, password });
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         // The token is bound to the user, so the one from before signing in no longer works.
         await RefreshTokenAsync(client);
-        return client;
     }
 }

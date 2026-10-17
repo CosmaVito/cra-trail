@@ -12,11 +12,7 @@ It is the example product of cra-trail: the cra-trail pipeline builds it, scans 
 - The researcher's contact is erased a set number of days after the report is closed.
 - Security events go to the log as JSON lines.
 
-Limits: one tenant, no email, no sign-up page, no password reset. Operators are created on the server. No command removes an operator or changes a password, and sessions are not checked against the database. To revoke an operator, stop the app, delete the operator's row with `sqlite3` on the data volume (the image has no shell: do it from the host or another container), delete the `keys/` folder to end every session, and start the app again:
-
-```bash
-sqlite3 /path/to/data/cvd-inbox.db "PRAGMA secure_delete = ON; DELETE FROM Operators WHERE Name = 'alice';"
-```
+Limits: one tenant, no email, no sign-up page, no password reset. Operators are created and removed on the server with `create-operator` and `remove-operator`. To change a password, remove the operator and create it again. Every request checks the session against the database, so signing out or removing an operator ends their sessions on every device.
 
 ## Run the container
 
@@ -37,6 +33,8 @@ Create the first operator. The password is read from standard input, or generate
 ```bash
 printf '%s\n' "$OPERATOR_PASSWORD" | docker exec -i cvd-inbox ./cvd-inbox create-operator alice --password-stdin
 ```
+
+`docker exec cvd-inbox ./cvd-inbox remove-operator alice` removes an operator and ends their sessions.
 
 ## Run from the zip
 

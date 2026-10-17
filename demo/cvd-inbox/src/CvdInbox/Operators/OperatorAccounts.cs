@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using CvdInbox.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace CvdInbox.Operators;
@@ -14,7 +15,8 @@ public enum SignInOutcome
     LockedOut,
 }
 
-public sealed record PasswordCheck(SignInOutcome Outcome, string? Name);
+// On success, Name and the operator's current security stamp, which goes into the session cookie.
+public sealed record PasswordCheck(SignInOutcome Outcome, string? Name, string? Stamp = null);
 
 public sealed record OperatorCreation(string? Name, string? Error)
 {
@@ -25,7 +27,7 @@ public sealed record OperatorCreation(string? Name, string? Error)
 // what a real one costs, whatever the hasher's settings.
 public sealed class NobodyPassword(IPasswordHasher<Operator> hasher)
 {
-    public static readonly Operator Nobody = new() { Name = "", PasswordHash = "" };
+    public static readonly Operator Nobody = new() { Name = "", PasswordHash = "", SecurityStamp = "" };
 
     public string Hash { get; } = hasher.HashPassword(Nobody, Convert.ToBase64String(RandomNumberGenerator.GetBytes(18)));
 }
@@ -37,6 +39,8 @@ public sealed partial class OperatorAccounts(InboxDb db, IPasswordHasher<Operato
     public const int MaximumPasswordLength = 128;
     public const int MaxFailedSignIns = 5;
     public static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
+    public static string NewStamp() => Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
 
     [GeneratedRegex("^[a-z0-9][a-z0-9._-]{1,31}$")]
     private static partial Regex NamePattern();
@@ -63,11 +67,40 @@ public sealed partial class OperatorAccounts(InboxDb db, IPasswordHasher<Operato
         if (await db.Operators.AnyAsync(o => o.Name == normalized, cancellationToken))
             return new(null, $"Operator {normalized} already exists.");
 
-        var account = new Operator { Name = normalized, PasswordHash = "", CreatedAt = time.GetUtcNow().UtcDateTime };
+        var account = new Operator { Name = normalized, PasswordHash = "", CreatedAt = time.GetUtcNow().UtcDateTime, SecurityStamp = NewStamp() };
         account.PasswordHash = hasher.HashPassword(account, password);
         db.Operators.Add(account);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        // Another create of the same name got in while the hash ran. 19 is SQLITE_CONSTRAINT, from the unique name index.
+        catch (DbUpdateException e) when (e.InnerException is SqliteException { SqliteErrorCode: 19 })
+        {
+            return new(null, $"Operator {normalized} already exists.");
+        }
         return new(normalized, null);
+    }
+
+    // Removes the operator; their sessions fail the stamp check at the next request. The normalized name if a row went, otherwise null.
+    public async Task<string?> RemoveAsync(string name, CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeName(name);
+        return normalized is not null && await db.Operators.Where(o => o.Name == normalized).ExecuteDeleteAsync(cancellationToken) > 0
+            ? normalized
+            : null;
+    }
+
+    public async Task<bool> IsSessionValidAsync(string? name, string? stamp, CancellationToken cancellationToken) =>
+        name is not null && stamp is not null
+        && await db.Operators.AnyAsync(o => o.Name == name && o.SecurityStamp == stamp, cancellationToken);
+
+    // A new stamp ends every session of the operator, on every device. It is written even if the client goes away.
+    public async Task EndSessionsAsync(string name)
+    {
+        var stamp = NewStamp();
+        await db.Operators.Where(o => o.Name == name)
+            .ExecuteUpdateAsync(set => set.SetProperty(o => o.SecurityStamp, stamp), CancellationToken.None);
     }
 
     // The normalized name when an operator has it, otherwise null.
@@ -113,7 +146,7 @@ public sealed partial class OperatorAccounts(InboxDb db, IPasswordHasher<Operato
         account.FailedSignIns = 0;
         account.LockedUntil = null;
         await db.SaveChangesAsync(CancellationToken.None);
-        return new(SignInOutcome.Succeeded, account.Name);
+        return new(SignInOutcome.Succeeded, account.Name, account.SecurityStamp);
     }
 }
 

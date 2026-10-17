@@ -10,8 +10,8 @@ Annex I, Part I, points 2(g) and 2(m) of the Cyber Resilience Act: data minimisa
 | Researcher's contact, optional | `Reports.Contact` | Follow-up questions | `Inbox__ContactRetentionDays` (30) days after the report is closed |
 | SHA-256 of the receipt code | `Reports.ReceiptHash` | Status lookups | The report is deleted |
 | Status and dates | `Reports` table | Triage and the status page | The report is deleted |
-| Internal notes and their author | `Notes` table | Triage | The report is deleted |
-| Operator name, password hash, failed sign-in count, lock time | `Operators` table | Sign-in | The database is removed |
+| Internal notes and their author | `Notes` table | Triage | The report is deleted, also after the author is removed |
+| Operator name, password hash, failed sign-in count, lock time, session stamp | `Operators` table | Sign-in and session checks | `remove-operator` removes the operator |
 | Data protection keys | `keys/` folder | Protect the session and request token cookies | You delete the data folder |
 
 What it does not store:
@@ -28,7 +28,7 @@ A report closes when it moves to rejected or disclosed. From then on its contact
 
 ## Deletion
 
-An operator can delete a report for good. The report and its notes go in one statement.
+An operator can delete a report for good. The report and its notes go in one statement. `remove-operator` deletes an operator's row, and the measures below apply to it too.
 
 SQLite keeps deleted content in free pages and in the write-ahead log unless told otherwise. CVD Inbox:
 

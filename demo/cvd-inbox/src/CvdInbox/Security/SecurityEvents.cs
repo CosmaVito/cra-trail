@@ -24,6 +24,9 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
     [LoggerMessage(EventId = 1005, Level = LogLevel.Information, Message = "Operator {OperatorName} created from the command line.")]
     public partial void OperatorCreated(string operatorName);
 
+    [LoggerMessage(EventId = 1006, Level = LogLevel.Warning, Message = "Operator {OperatorName} removed from the command line.")]
+    public partial void OperatorRemoved(string operatorName);
+
     [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "Operator {OperatorName} signed in from {ClientAddress}.")]
     public partial void SignedIn(string operatorName, string? clientAddress);
 
