@@ -10,7 +10,10 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     private readonly ILogger logger = loggerFactory.CreateLogger(Category);
 
-    public static string? ClientAddress(HttpContext context) => context.Connection.RemoteIpAddress?.ToString();
+    // An IPv4 client on a dual-stack socket arrives as ::ffff:a.b.c.d; the log shows a.b.c.d.
+    public static string? ClientAddress(HttpContext context) => context.Connection.RemoteIpAddress is { } address
+        ? (address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address).ToString()
+        : null;
 
     [LoggerMessage(EventId = 1101, Level = LogLevel.Information, Message = "Report {ReportId} received.")]
     public partial void ReportReceived(int reportId);

@@ -14,7 +14,7 @@ CVD Inbox writes these events to standard output as JSON lines, each with a UTC 
 | 1006 | Warning | Operator removed from the command line; their sessions end at the next request | operator |
 | 1101 | Information | Report received | report id |
 | 1102 | Warning | Report form trap filled, report discarded | client address |
-| 1103 | Warning | Rate limit reached | policy (`reports`, `lookups`, `sign-ins`), client address |
+| 1103 | Warning | Rate limit reached; logged at most once a minute per client and policy | policy (`reports`, `lookups`, `sign-ins`), client address |
 | 1104 | Warning | Request without a valid request token refused | path, client address |
 | 1201 | Information | Report status changed | report id, from, to, operator |
 | 1202 | Information | Internal note added | report id, operator |

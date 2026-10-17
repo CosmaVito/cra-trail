@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.RateLimiting;
 using CvdInbox.Security;
 using Microsoft.AspNetCore.RateLimiting;
@@ -38,6 +40,7 @@ public static class RateLimits
                 "Every RateLimits entry needs a positive PermitLimit and Window.")
             .ValidateOnStart();
 
+        services.AddSingleton<RejectionLog>();
         services.AddRateLimiter(_ => { });
         services.AddOptions<RateLimiterOptions>().Configure<IOptions<RateLimitOptions>>((limiter, limits) =>
         {
@@ -52,17 +55,48 @@ public static class RateLimits
                 if (rejected.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                     context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 var policy = context.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName ?? "unknown";
-                context.RequestServices.GetRequiredService<SecurityEvents>().RateLimited(policy, SecurityEvents.ClientAddress(context));
+                if (context.RequestServices.GetRequiredService<RejectionLog>().ShouldLog(policy, ClientKey(context)))
+                    context.RequestServices.GetRequiredService<SecurityEvents>().RateLimited(policy, SecurityEvents.ClientAddress(context));
                 return ValueTask.CompletedTask;
             };
         });
         return services;
     }
 
-    // One window per client address. Behind a reverse proxy the address is right only when
-    // Inbox:TrustedProxies lists that proxy.
+    // One window per IPv4 address, or per /64 network for IPv6: a subscriber usually gets a whole /64 and can pick
+    // any address in it. Behind a reverse proxy the address is right only when Inbox:TrustedProxies lists that proxy.
+    public static string? ClientKey(HttpContext context)
+    {
+        var address = context.Connection.RemoteIpAddress;
+        if (address is null)
+            return null;
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+            return address.ToString();
+        var bytes = address.GetAddressBytes();
+        bytes.AsSpan(8).Clear();
+        return new IPAddress(bytes) + "/64";
+    }
+
     private static RateLimitPartition<string> PerClient(HttpContext context, WindowLimit limit) =>
         RateLimitPartition.GetFixedWindowLimiter(
-            SecurityEvents.ClientAddress(context) ?? "unknown",
+            ClientKey(context) ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limit.PermitLimit, Window = limit.Window, QueueLimit = 0 });
+}
+
+// Event 1103 at most once a minute per client and policy: a client that keeps hitting a limit would otherwise fill the log.
+// One per app, not static, so parallel tests do not share it.
+public sealed class RejectionLog : IDisposable
+{
+    private readonly PartitionedRateLimiter<string> limiter = PartitionedRateLimiter.Create<string, string>(key =>
+        RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    public bool ShouldLog(string policy, string? clientKey)
+    {
+        using var lease = limiter.AttemptAcquire($"{policy} {clientKey}");
+        return lease.IsAcquired;
+    }
+
+    public void Dispose() => limiter.Dispose();
 }

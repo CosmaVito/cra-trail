@@ -66,9 +66,9 @@ Settings come from environment variables (`Section__Key`) or `appsettings.json`.
 | `Inbox__ContactRetentionDays` | `30` | Days a contact is kept after the report closes. |
 | `Inbox__RetentionSweepInterval` | `01:00:00` | How often expired contacts are erased and the write-ahead log is truncated, from one minute to one day. |
 | `Inbox__TrustedProxies__0`, ... | none | IP addresses of the reverse proxies allowed to set `X-Forwarded-For` and `X-Forwarded-Proto`. One proxy hop is supported: list parallel proxies, not a chain. The proxy must send both headers. |
-| `RateLimits__Reports__PermitLimit`, `__Window` | `5`, `01:00:00` | Reports per client address. |
-| `RateLimits__Lookups__PermitLimit`, `__Window` | `30`, `00:10:00` | Status lookups per client address. |
-| `RateLimits__SignIns__PermitLimit`, `__Window` | `10`, `00:15:00` | Sign-in attempts per client address. |
+| `RateLimits__Reports__PermitLimit`, `__Window` | `5`, `01:00:00` | Reports per client address, or per /64 network for IPv6. |
+| `RateLimits__Lookups__PermitLimit`, `__Window` | `30`, `00:10:00` | Status lookups per client address, or per /64 network for IPv6. |
+| `RateLimits__SignIns__PermitLimit`, `__Window` | `10`, `00:15:00` | Sign-in attempts per client address, or per /64 network for IPv6. |
 
 ## Develop
 

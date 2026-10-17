@@ -71,7 +71,7 @@ Annex I, Part I, point 2(b) of the Cyber Resilience Act asks for a secure defaul
 - Every request checks the session against the database. Signing out ends the operator's sessions on every device, and `remove-operator` ends them at the next request.
 - Passwords are stored as PBKDF2-HMAC-SHA512 hashes with 100,000 iterations.
 - A wrong password, an unknown name and a locked account get the same answer: 401 with "Wrong name or password." Five wrong passwords lock the account for 15 minutes. Every failure is counted in the database in one statement, so none is lost under parallel attempts; the sign-in rate limit bounds the guesses already in flight.
-- Reports, status lookups and sign-ins are rate limited per client address.
+- Reports, status lookups and sign-ins are rate limited per client address, or per /64 network for IPv6, where one subscriber usually holds a whole /64.
 - The Content Security Policy allows scripts from the app only and sets `frame-ancestors 'none'`; responses also send `nosniff`, `X-Frame-Options: DENY` and no referrer, and API responses are not cached.
 - Request bodies over 128 KiB are refused.
 - The report form has a hidden trap field instead of a third-party CAPTCHA.
