@@ -23,20 +23,36 @@ public sealed class InboxDb(DbContextOptions<InboxDb> options) : DbContext(optio
     {
         const int attempts = 5;
         // A connection of its own with no busy timeout: the default one would wait for readers instead of reporting busy.
+        // In Microsoft.Data.Sqlite, DefaultTimeout = 0 also means "retry a statement that meets SQLITE_BUSY without end",
+        // so two seconds bound the whole truncate, and a busy or locked error counts as not done.
         var connectionString = new SqliteConnectionStringBuilder(Database.GetConnectionString()) { DefaultTimeout = 0, Pooling = false };
-        await using var connection = new SqliteConnection(connectionString.ConnectionString);
-        await connection.OpenAsync(cancellationToken);
-        for (var attempt = 1; attempt <= attempts; attempt++)
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        limit.CancelAfter(TimeSpan.FromSeconds(2));
+        try
         {
-            await using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
-            await using var row = await command.ExecuteReaderAsync(cancellationToken);
-            if (await row.ReadAsync(cancellationToken) && row.GetInt64(0) == 0)
-                return true;
-            if (attempt < attempts)
-                await Task.Delay(TimeSpan.FromMilliseconds(40), cancellationToken);
+            await using var connection = new SqliteConnection(connectionString.ConnectionString);
+            await connection.OpenAsync(limit.Token);
+            for (var attempt = 1; attempt <= attempts; attempt++)
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                await using var row = await command.ExecuteReaderAsync(limit.Token);
+                if (await row.ReadAsync(limit.Token) && row.GetInt64(0) == 0)
+                    return true;
+                if (attempt < attempts)
+                    await Task.Delay(TimeSpan.FromMilliseconds(40), limit.Token);
+            }
+            return false;
         }
-        return false;
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        // 5 is SQLITE_BUSY, 6 is SQLITE_LOCKED.
+        catch (SqliteException e) when (e.SqliteErrorCode is 5 or 6)
+        {
+            return false;
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

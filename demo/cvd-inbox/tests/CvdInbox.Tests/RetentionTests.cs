@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using CvdInbox.Data;
 using CvdInbox.Retention;
+using CvdInbox.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -100,6 +101,70 @@ public class RetentionTests
         Assert.Equal(start.AddHours(2), (await FindAsync(app, second)).ContactErasedAt);
     }
 
+    [Fact]
+    public async Task A_failed_erasure_is_logged_and_the_truncate_still_runs()
+    {
+        await using var app = App();
+        var truncated = false;
+
+        await RetentionService.SweepAsync(
+            () => throw new InvalidOperationException("disk full"),
+            () =>
+            {
+                truncated = true;
+                return Task.CompletedTask;
+            },
+            app.Services.GetRequiredService<SecurityEvents>(), TestContext.Current.CancellationToken);
+
+        Assert.True(truncated);
+        var failed = Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1302);
+        Assert.Equal("disk full", failed.Exception?.Message);
+    }
+
+    [Fact]
+    public async Task The_sweep_erases_first_then_truncates_and_logs_a_failed_truncate()
+    {
+        await using var app = App();
+        var events = app.Services.GetRequiredService<SecurityEvents>();
+
+        await RetentionService.SweepAsync(
+            () =>
+            {
+                events.ContactsErased(2);
+                return Task.CompletedTask;
+            },
+            () => Task.FromException(new IOException("locked")),
+            events, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { 1301, 1303 }, app.SecurityEvents().Select(e => e.Id.Id).Where(id => id is 1301 or 1303));
+    }
+
+    [Fact]
+    public async Task Shutdown_ends_the_sweep_without_an_error_event()
+    {
+        await using var app = App();
+        using var stopping = new CancellationTokenSource();
+        await stopping.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RetentionService.SweepAsync(
+            () => Task.FromCanceled(stopping.Token), () => Task.CompletedTask, app.Services.GetRequiredService<SecurityEvents>(), stopping.Token));
+
+        Assert.DoesNotContain(app.SecurityEvents(), e => e.Id.Id is 1302 or 1303);
+    }
+
+    [Fact]
+    public async Task Other_failures_during_shutdown_are_still_logged()
+    {
+        await using var app = App();
+        using var stopping = new CancellationTokenSource();
+        await stopping.CancelAsync();
+
+        await RetentionService.SweepAsync(
+            () => throw new InvalidOperationException("closed"), () => Task.CompletedTask, app.Services.GetRequiredService<SecurityEvents>(), stopping.Token);
+
+        Assert.Single(app.SecurityEvents(), e => e.Id.Id == 1302);
+    }
+
     private static InboxApp App(params (string Key, string Value)[] extra) =>
         new(extra.ToDictionary(setting => setting.Key, setting => (string?)setting.Value));
 
@@ -113,19 +178,28 @@ public class RetentionTests
     }
 
     // One sweep of the background service, without its timer: erase, then truncate the log.
+    // One sweep of the background service, with its real steps and without its timer.
     private static Task<int> SweepAsync(InboxApp app) => app.InScopeAsync(async services =>
     {
         var eraser = services.GetRequiredService<ContactEraser>();
-        var erased = await eraser.EraseExpiredAsync(CancellationToken.None);
-        await eraser.TruncateWalAsync(CancellationToken.None);
+        var erased = 0;
+        await RetentionService.SweepAsync(
+            async () => erased = await eraser.EraseExpiredAsync(CancellationToken.None),
+            () => eraser.TruncateWalAsync(CancellationToken.None),
+            services.GetRequiredService<SecurityEvents>(), CancellationToken.None);
         return erased;
     });
 
-    // The sweep runs on a background thread; give it a moment after the clock moves.
+    // The sweep runs on a background thread; give it up to 10 seconds after the clock moves.
     private static async Task WaitForErasureAsync(InboxApp app, int id)
     {
-        for (var attempt = 0; attempt < 100 && (await FindAsync(app, id)).Contact is not null; attempt++)
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            if ((await FindAsync(app, id)).Contact is null)
+                return;
             await Task.Delay(100, TestContext.Current.CancellationToken);
+        }
+        Assert.Fail($"The contact of report {id} was still there after 10 seconds.");
     }
 
     private static Task<Report> FindAsync(InboxApp app, int id) =>

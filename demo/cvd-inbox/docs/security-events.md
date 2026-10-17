@@ -21,13 +21,8 @@ CVD Inbox writes these events to standard output as JSON lines, each with a UTC 
 | 1203 | Warning | Report deleted for good | report id, operator |
 | 1204 | Warning | Write-ahead log not truncated because the database was in use; the next sweep tries again | none |
 | 1301 | Information | Contacts erased after the retention period | number of reports |
-
-Two more events come from the retention job, under the log category `CvdInbox.Retention.RetentionService`, both at level Error with no fields beyond the exception:
-
-| ID | Event |
-|---|---|
-| 1302 | Erasing expired contacts failed; the next sweep tries again |
-| 1303 | Truncating the write-ahead log failed; the next sweep tries again |
+| 1302 | Error | Erasing expired contacts failed; the next sweep tries again | the exception |
+| 1303 | Error | Truncating the write-ahead log failed; the next sweep tries again | the exception |
 
 Events 1005 and 1006 are written by the `create-operator` and `remove-operator` processes, not by the server. When you run a command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
 
@@ -45,4 +40,4 @@ Set the level of the category to `None`, for example with `-e` in Docker or `Env
 Logging__LogLevel__CvdInbox.Security=None
 ```
 
-The same works in `appsettings.json` under `Logging:LogLevel`. This silences every event in the first table. The two retention errors keep their own category: set `Logging__LogLevel__CvdInbox.Retention` to `None` to silence them too. Without these events there is no record of sign-ins, changes and deletions.
+The same works in `appsettings.json` under `Logging:LogLevel`. This silences every event in the table. Without these events there is no record of sign-ins, changes and deletions.

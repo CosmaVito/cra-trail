@@ -59,4 +59,10 @@ public sealed partial class SecurityEvents(ILoggerFactory loggerFactory)
 
     [LoggerMessage(EventId = 1301, Level = LogLevel.Information, Message = "Contact details erased from {Count} closed reports.")]
     public partial void ContactsErased(int count);
+
+    [LoggerMessage(EventId = 1302, Level = LogLevel.Error, Message = "Erasing expired contacts failed; the next sweep tries again.")]
+    public partial void EraseFailed(Exception exception);
+
+    [LoggerMessage(EventId = 1303, Level = LogLevel.Error, Message = "Truncating the write-ahead log failed; the next sweep tries again.")]
+    public partial void TruncateFailed(Exception exception);
 }

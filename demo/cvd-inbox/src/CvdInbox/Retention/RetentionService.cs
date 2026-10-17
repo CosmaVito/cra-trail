@@ -1,41 +1,55 @@
+using CvdInbox.Security;
 using Microsoft.Extensions.Options;
 
 namespace CvdInbox.Retention;
 
-public sealed partial class RetentionService(
-    IServiceScopeFactory scopes, TimeProvider time, IOptions<InboxOptions> options, ILogger<RetentionService> logger) : BackgroundService
+public sealed class RetentionService(
+    IServiceScopeFactory scopes, TimeProvider time, IOptions<InboxOptions> options, SecurityEvents events) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(options.Value.RetentionSweepInterval, time);
         do
         {
-            await RunAsync(eraser => eraser.EraseExpiredAsync(stoppingToken), EraseFailed, stoppingToken);
-            // Every sweep, also when the erasure failed: a truncate that missed after a delete is retried here.
-            await RunAsync(eraser => eraser.TruncateWalAsync(stoppingToken), TruncateFailed, stoppingToken);
+            await SweepAsync(
+                () => InScopeAsync(eraser => eraser.EraseExpiredAsync(stoppingToken)),
+                () => InScopeAsync(eraser => eraser.TruncateWalAsync(stoppingToken)),
+                events,
+                stoppingToken);
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    // A failed step is logged and the next sweep tries again; only shutdown ends the loop.
-    private async Task RunAsync(Func<ContactEraser, Task> step, Action<ILogger, Exception> failed, CancellationToken stoppingToken)
+    // Erase, then truncate the log. The truncate runs also when the erasure failed: a truncate that missed after a
+    // delete is retried here. A failed step is logged and the next sweep tries again; only shutdown ends the loop.
+    public static async Task SweepAsync(Func<Task> erase, Func<Task> truncate, SecurityEvents events, CancellationToken stoppingToken)
+    {
+        await RunAsync(erase, events.EraseFailed, stoppingToken);
+        await RunAsync(truncate, events.TruncateFailed, stoppingToken);
+    }
+
+    private static async Task RunAsync(Func<Task> step, Action<Exception> failed, CancellationToken stoppingToken)
     {
         try
         {
-            await using var scope = scopes.CreateAsyncScope();
-            await step(scope.ServiceProvider.GetRequiredService<ContactEraser>());
+            await step();
         }
-        catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            failed(logger, exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            failed(exception);
         }
     }
 
-    [LoggerMessage(EventId = 1302, Level = LogLevel.Error, Message = "Erasing expired contacts failed; the next sweep tries again.")]
-    private static partial void EraseFailed(ILogger logger, Exception exception);
-
-    [LoggerMessage(EventId = 1303, Level = LogLevel.Error, Message = "Truncating the write-ahead log failed; the next sweep tries again.")]
-    private static partial void TruncateFailed(ILogger logger, Exception exception);
+    // A scope per step, so a failed step leaves no state behind for the next one.
+    private async Task InScopeAsync(Func<ContactEraser, Task> step)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        await step(scope.ServiceProvider.GetRequiredService<ContactEraser>());
+    }
 }
 
 public static class RetentionSetup

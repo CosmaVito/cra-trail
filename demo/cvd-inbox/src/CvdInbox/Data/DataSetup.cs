@@ -12,17 +12,14 @@ public static class DataSetup
     {
         services.AddSingleton<SqliteHardening>();
         services.AddDbContext<InboxDb>((provider, options) =>
-        {
-            var connection = new SqliteConnectionStringBuilder
-            {
-                DataSource = provider.DatabasePath(),
-                Mode = SqliteOpenMode.ReadWriteCreate,
-            };
-            options.UseSqlite(connection.ToString())
-                .AddInterceptors(provider.GetRequiredService<SqliteHardening>());
-        });
+            options.UseSqlite(ConnectionString(provider.DatabasePath()))
+                .AddInterceptors(provider.GetRequiredService<SqliteHardening>()));
         return services;
     }
+
+    // Also the key of the connection pool, which the tests clear for one app at a time.
+    public static string ConnectionString(string databasePath) =>
+        new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadWriteCreate }.ToString();
 
     public static string DatabasePath(this IServiceProvider services)
     {

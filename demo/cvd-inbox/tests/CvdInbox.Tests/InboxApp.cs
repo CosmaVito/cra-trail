@@ -128,8 +128,10 @@ public sealed class InboxApp : WebApplicationFactory<Program>
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        // Pooled connections keep the files open on Windows.
-        SqliteConnection.ClearAllPools();
+        // Pooled connections keep the files open on Windows. Only this app's pool: closing the last connection of
+        // another app checkpoints its log, under a test that may be reading the log's bytes.
+        using var connection = new SqliteConnection(DataSetup.ConnectionString(Path.Combine(DataDirectory, DataSetup.DatabaseFile)));
+        SqliteConnection.ClearPool(connection);
         Directory.Delete(DataDirectory, recursive: true);
     }
 }
