@@ -147,9 +147,10 @@ public class PackBuilderTests
         var pack = PackBuilder.Build(Request(new PackInput(EvidenceKinds.ProductSbom, "bom.json", Sbom)), TestRules.Minimal, FakeEvaluate);
         var newer = RuleSetLoader.Load("version: \"v2\"\ngate: []\nchecks: {}\nrequirements: []\n", []);
 
-        var again = PackBuilder.Reevaluate(pack, newer, FakeEvaluate);
+        var again = PackBuilder.Reevaluate(pack, newer, FakeEvaluate, "0.2.0");
 
         Assert.Equal("v2", again.Manifest.RulesVersion);
+        Assert.Equal(new GeneratorInfo("cra-trail", "0.2.0"), again.Manifest.Generator);
         Assert.Equal("v2", again.ReadEvaluation()!.RulesVersion);
         Assert.Equal(pack.Manifest.CreatedAt, again.Manifest.CreatedAt);
         Assert.Equal(pack.Files["sbom/product.cdx.json"], again.Files["sbom/product.cdx.json"]);

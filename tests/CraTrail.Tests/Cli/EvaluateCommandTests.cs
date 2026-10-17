@@ -20,13 +20,44 @@ public class EvaluateCommandTests
         File.WriteAllText(Path.Combine(rules, "crosswalk.yaml"),
             File.ReadAllText(Path.Combine(rules, "crosswalk.yaml")).Replace("version: \"test-1\"", "version: \"test-2\"", StringComparison.Ordinal));
 
-        Assert.Equal(ExitCodes.Ok, run.Run("evaluate", "out/pack.zip", "--rules", rules));
+        var original = File.ReadAllBytes(run.Path("out", "pack.zip"));
 
-        Assert.Contains("rules test-2, gate passed", run.Out.ToString(), StringComparison.Ordinal);
-        using var stream = File.OpenRead(run.Path("out", "pack.zip"));
+        Assert.Equal(ExitCodes.Ok, run.Run("evaluate", "out/pack.zip", "--rules", rules, "--out", "out/pack-v2.zip"));
+
+        Assert.Contains("wrote out/pack-v2.zip: rules test-2, gate passed", run.Out.ToString(), StringComparison.Ordinal);
+        using var stream = File.OpenRead(run.Path("out", "pack-v2.zip"));
         var entries = PackArchive.Read(stream);
-        Assert.Equal("test-2", JsonNode.Parse(entries[PackManifest.FileName])!["rulesVersion"]!.GetValue<string>());
+        var manifest = JsonNode.Parse(entries[PackManifest.FileName])!;
+        Assert.Equal("test-2", manifest["rulesVersion"]!.GetValue<string>());
+        Assert.Equal(CliApp.ToolVersion(), manifest["generator"]!["version"]!.GetValue<string>());
         Assert.True(PackVerifier.Verify(entries).Ok);
+        // The input, which may be signed, stays as it was.
+        Assert.Equal(original, File.ReadAllBytes(run.Path("out", "pack.zip")));
+    }
+
+    [Fact]
+    public void The_output_path_is_required()
+    {
+        using var run = new CliRun();
+        CliPacks.WriteRepo(run);
+        CliPacks.Pack(run);
+
+        Assert.Equal(ExitCodes.InputError, run.Run("evaluate", "out/pack.zip"));
+        Assert.Contains("--out", run.Err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_failed_write_leaves_no_temporary_file()
+    {
+        using var run = new CliRun();
+        CliPacks.WriteRepo(run);
+        CliPacks.Pack(run);
+        // A folder where the pack should go: the move at the end fails.
+        Directory.CreateDirectory(run.Path("out", "taken.zip"));
+
+        Assert.Equal(ExitCodes.InputError, run.Run("evaluate", "out/pack.zip", "--out", "out/taken.zip"));
+
+        Assert.False(File.Exists(run.Path("out", "taken.zip.tmp")));
     }
 
     [Fact]
@@ -37,7 +68,7 @@ public class EvaluateCommandTests
         CliPacks.Pack(run);
         Tamper(run.Path("out", "pack.zip"), "sbom/product.cdx.json");
 
-        Assert.Equal(ExitCodes.VerificationFailed, run.Run("evaluate", "out/pack.zip"));
+        Assert.Equal(ExitCodes.VerificationFailed, run.Run("evaluate", "out/pack.zip", "--out", "out/again.zip"));
         Assert.Contains("problem: hash mismatch: sbom/product.cdx.json", run.Err.ToString(), StringComparison.Ordinal);
     }
 

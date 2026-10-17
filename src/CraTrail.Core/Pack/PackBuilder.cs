@@ -73,7 +73,7 @@ public static class PackBuilder
         return Finish(header, files, rules, evaluate);
     }
 
-    public static PackContents Reevaluate(PackContents pack, RuleSet rules, EvaluateFunc evaluate)
+    public static PackContents Reevaluate(PackContents pack, RuleSet rules, EvaluateFunc evaluate, string generatorVersion)
     {
         ArgumentNullException.ThrowIfNull(pack);
         ArgumentNullException.ThrowIfNull(rules);
@@ -82,7 +82,14 @@ public static class PackBuilder
         var files = new SortedDictionary<string, (string Kind, byte[] Bytes)>(StringComparer.Ordinal);
         foreach (var file in pack.Manifest.Files.Where(f => f.Path != PackContents.EvaluationPath))
             files[file.Path] = (file.Kind, pack.Files[file.Path]);
-        return Finish(pack.Manifest with { RulesVersion = rules.Version, Files = [] }, files, rules, evaluate);
+        // The manifest and evaluation.json are written again, so the generator is the tool that writes them now.
+        var header = pack.Manifest with
+        {
+            Generator = new GeneratorInfo("cra-trail", generatorVersion),
+            RulesVersion = rules.Version,
+            Files = [],
+        };
+        return Finish(header, files, rules, evaluate);
     }
 
     private static PackContents Finish(

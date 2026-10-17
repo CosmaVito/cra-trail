@@ -29,7 +29,8 @@ YAML
   --cvd-policy SECURITY.md \
   --created-at 2026-10-15T00:00:00Z \
   --out pack.zip
-"$cra" evaluate pack.zip
+"$cra" evaluate pack.zip --out pack-again.zip
+"$cra" verify pack-again.zip
 "$cra" verify pack.zip
 "$cra" gate pack.zip >/dev/null
 echo "smoke test passed"
