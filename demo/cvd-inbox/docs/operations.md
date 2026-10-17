@@ -49,7 +49,7 @@ Exit codes of both commands: 0 done, 1 refused or failed, 2 wrong usage.
 
 ## Upgrade
 
-Stop the old version, back up the data folder, start the new one. The database schema is migrated at start.
+Stop the old version, back up the data folder, start the new one. The database schema is migrated at start. The migration that adds session stamps signs every operator out once: they sign in again.
 
 ## Back up and restore
 

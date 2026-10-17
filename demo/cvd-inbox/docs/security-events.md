@@ -26,7 +26,7 @@ CVD Inbox writes these events to standard output as JSON lines, each with a UTC 
 | 1401 | Warning | security.txt expires within 30 days; logged at start and then every day | expiry date |
 | 1402 | Error | security.txt has expired while the server was running; logged every day until a restart with a later date | expiry date |
 
-Events 1005 and 1006 are written by the `create-operator` and `remove-operator` processes, not by the server. When you run a command with `docker exec` or from a shell, the event goes to the output of that command, not to the container log or the journal.
+Events 1005 and 1006 are written by the `create-operator` and `remove-operator` processes, not by the server, and so is event 1204 when `remove-operator` finds the database in use. When you run a command with `docker exec` or from a shell, these events go to the output of that command, not to the container log or the journal.
 
 A sign-in over plain http to a public host is refused with a 400 before the password is checked, and produces no event. Event 1002 never carries what was typed in the name field unless it is the name of an existing operator, because people type passwords there.
 
