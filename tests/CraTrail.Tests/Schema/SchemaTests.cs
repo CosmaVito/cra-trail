@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CraTrail.Core.Json;
+using CraTrail.Tests.Pack;
 using Json.Schema;
 
 namespace CraTrail.Tests.Schema;
@@ -35,6 +36,15 @@ public class SchemaTests
         var sha = manifest["files"]![0]!["sha256"]!.GetValue<string>();
         manifest["files"]![0]!["sha256"] = sha.ToUpperInvariant();
         Assert.False(Evaluate("manifest", CraTrailJson.SerializeNode(manifest)).IsValid);
+    }
+
+    [Theory]
+    [MemberData(nameof(PackVerifierTests.Paths), MemberType = typeof(PackVerifierTests))]
+    public void The_manifest_schema_accepts_the_paths_the_verifier_accepts(string path, bool safe)
+    {
+        var manifest = JsonNode.Parse(new TestPackBuilder().Build().ManifestBytes)!;
+        manifest["files"]![0]!["path"] = path;
+        Assert.Equal(safe, Evaluate("manifest", CraTrailJson.SerializeNode(manifest)).IsValid);
     }
 
     private static void AssertValid(string schema, byte[] json)

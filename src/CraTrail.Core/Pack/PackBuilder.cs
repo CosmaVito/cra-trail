@@ -163,6 +163,9 @@ public static class PackBuilder
         var name = fileName.Replace('\\', '/').Split('/')[^1];
         if (name is "" or "." or "..")
             throw new PackBuildException($"'{fileName}' is not a usable file name.");
+        // verify refuses ':' in pack paths, so a Linux file name such as codeql:cs.sarif must stop here.
+        if (!PackVerifier.IsSafePath(name))
+            throw new PackBuildException($"'{fileName}' cannot be used as a file name in the pack. Rename it without ':'.");
         return name;
     }
 

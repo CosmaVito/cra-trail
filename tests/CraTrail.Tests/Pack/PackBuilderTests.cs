@@ -153,6 +153,18 @@ public class PackBuilderTests
     }
 
     [Fact]
+    public void A_file_name_with_a_colon_is_refused_before_it_reaches_the_pack()
+    {
+        var request = Request(
+            new PackInput(EvidenceKinds.ProductSbom, "product.cdx.json", Sbom),
+            Fixture(EvidenceKinds.SastSarif, "codeql:cs.sarif", "sarif", "codeql-driver.sarif"));
+
+        var error = Assert.Throws<PackBuildException>(() => PackBuilder.Build(request, TestRules.Minimal, FakeEvaluate));
+
+        Assert.Equal("'codeql:cs.sarif' cannot be used as a file name in the pack. Rename it without ':'.", error.Message);
+    }
+
+    [Fact]
     public void Static_analysis_sarif_is_redacted_too()
     {
         var pack = PackBuilder.Build(Request(

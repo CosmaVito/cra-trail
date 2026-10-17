@@ -59,7 +59,7 @@
       "additionalProperties": false,
       "required": ["path", "kind", "mediaType", "size", "sha256"],
       "properties": {
-        "path": { "type": "string", "pattern": "^[^/\\\\:][^\\\\:]*$" },
+        "path": { "type": "string", "pattern": "^(?!\\.\\.?(/|$))(?!.*/\\.\\.?(/|$))[^/\\\\:]+(/[^/\\\\:]+)*$" },
         "kind": {
           "enum": [
             "product", "evaluation", "product-sbom", "sbom", "vex", "grype", "sast-sarif", "secrets-sarif",

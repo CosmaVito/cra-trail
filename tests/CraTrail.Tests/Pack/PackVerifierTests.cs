@@ -73,16 +73,29 @@ public class PackVerifierTests
         Assert.Equal(new[] { "manifest.json is not valid: null entry in files" }, result.Problems);
     }
 
+    // Shared with SchemaTests: the manifest schema must accept exactly the paths the verifier accepts.
+    public static TheoryData<string, bool> Paths { get; } = new()
+    {
+        { "sbom/product.cdx.json", true },
+        { "product.json", true },
+        { "attested/docs/.well-known.md", true },
+        { "a/..b", true },
+        { "../evil", false },
+        { "a/../b", false },
+        { "a/..", false },
+        { "./a", false },
+        { "/etc/passwd", false },
+        { "a\\b", false },
+        { "C:/x", false },
+        { "scans/codeql:cs.sarif", false },
+        { "a//b", false },
+        { "a/./b", false },
+        { "a/", false },
+        { "", false },
+    };
+
     [Theory]
-    [InlineData("sbom/product.cdx.json", true)]
-    [InlineData("product.json", true)]
-    [InlineData("../evil", false)]
-    [InlineData("/etc/passwd", false)]
-    [InlineData("a\\b", false)]
-    [InlineData("C:/x", false)]
-    [InlineData("a//b", false)]
-    [InlineData("a/./b", false)]
-    [InlineData("", false)]
+    [MemberData(nameof(Paths))]
     public void Safe_paths_are_relative_and_plain(string path, bool safe) => Assert.Equal(safe, PackVerifier.IsSafePath(path));
 
     private static PackContents Pack() =>
