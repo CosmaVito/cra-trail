@@ -86,4 +86,4 @@ Annex I, Part I, point 2(j):
 - Writes only to the data folder, which is created with mode 0700 on Linux, and to `TMPDIR`. In the image that is on the same volume; the zip install uses the system temp directory.
 - No runtime dependency on other services: SQLite runs inside the process.
 
-`scripts/container-smoke.sh` checks part of this: a numeric non-root user, only port 8080 exposed, no shell, a run with `--read-only --cap-drop=ALL`, database, keys and temp files landing in the volume, and the operator surviving a container recreate. It does not check `DOTNET_EnableDiagnostics`, outbound connections, the 0700 mode or other listeners.
+`scripts/container-smoke.sh` checks part of this: a numeric non-root user, only port 8080 exposed, no shell, a run with `--read-only --cap-drop=ALL`, a chunked request body over 128 KiB refused with 413, database, keys and temp files landing in the volume, the operator surviving a container recreate, and `remove-operator` in the image. It does not check `DOTNET_EnableDiagnostics`, outbound connections, the 0700 mode or other listeners.

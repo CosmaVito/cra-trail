@@ -49,6 +49,14 @@ content_type="$(curl -fsS -w '\n%{content_type}' "http://127.0.0.1:$port/.well-k
   || fail "security.txt request failed"
 [ "$content_type" = "text/plain; charset=utf-8" ] || fail "security.txt has content type '$content_type'"
 
+# Kestrel stops a chunked body that grows past 128 KiB; the in-memory test server cannot check this.
+# A JSON string that never ends keeps the parser reading, so the limit is what stops it.
+answer="$( { printf '{"product":"'; head -c 200000 /dev/zero | tr '\0' x; printf '"}'; } \
+  | curl -sS -X POST -H 'Content-Type: application/json' -H 'Transfer-Encoding: chunked' --data-binary @- \
+    -w '\n%{http_code} %{content_type}' "http://127.0.0.1:$port/api/reports" | tail -n 1)" \
+  || fail "the chunked request failed"
+[ "$answer" = "413 application/problem+json" ] || fail "a chunked body over 128 KiB got '$answer', not 413 with a problem"
+
 # The session call writes the first data protection key; it must land in the volume.
 curl -fsS "http://127.0.0.1:$port/api/auth/session" >/dev/null || fail "GET /api/auth/session failed"
 printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin >/dev/null \
@@ -75,4 +83,7 @@ if second="$(printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox crea
 fi
 grep -q 'already exists' <<<"$second" || fail "the second create-operator failed for another reason: $second"
 
+docker exec "$name" ./cvd-inbox remove-operator smoke >/dev/null || fail "remove-operator failed"
+printf '%s\n' "$password" | docker exec -i "$name" ./cvd-inbox create-operator smoke --password-stdin >/dev/null \
+  || fail "create-operator after remove-operator failed"
 echo "container smoke test passed"
