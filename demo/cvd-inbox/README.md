@@ -40,7 +40,7 @@ printf '%s\n' "$OPERATOR_PASSWORD" | docker exec -i cvd-inbox ./cvd-inbox create
 
 ## Run from the zip
 
-The zip needs the ASP.NET Core Runtime 10 on a Linux x64 host. Start it from the unzipped folder: the app looks for `appsettings.json`, the client files in `wwwroot/` and a relative `Inbox__DataPath`, such as the default `data`, in the current directory.
+The zip needs the ASP.NET Core Runtime 10 on a Linux x64 host. The app reads `appsettings.json` and the client files in `wwwroot/` from its own folder, and a relative `Inbox__DataPath`, such as the default `data`, starts from that folder too, whatever the current directory.
 
 ```bash
 unzip cvd-inbox-0.1.0-linux-x64.zip -d cvd-inbox && cd cvd-inbox
@@ -50,7 +50,7 @@ export Inbox__DataPath=/var/lib/cvd-inbox ASPNETCORE_URLS=http://127.0.0.1:8080
 ./cvd-inbox
 ```
 
-In a systemd unit, set `WorkingDirectory=` to the unzipped folder. Run `create-operator` as the user of the service, with the same environment and working directory, or it can create a separate database that the service never reads. The command prints the path of the database file it wrote to.
+Run `create-operator` as the user of the service and with the same environment, or it can create a separate database that the service never reads. The command prints the path of the database file it wrote to.
 
 ## Configuration
 
@@ -78,6 +78,8 @@ Settings come from environment variables (`Section__Key`) or `appsettings.json`.
 dotnet run --project src/CvdInbox --launch-profile http   # API on http://localhost:5080
 cd client && npx ng serve                                 # app on http://localhost:4200, API through a proxy
 ```
+
+The development database goes to `src/CvdInbox/bin/Debug/net10.0/data`: a relative data path starts from the app's folder.
 
 Tests:
 

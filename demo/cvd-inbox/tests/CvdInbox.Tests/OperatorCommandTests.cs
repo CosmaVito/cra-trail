@@ -47,6 +47,18 @@ public class OperatorCommandTests
         Assert.NotEmpty(error);
     }
 
+    [Theory]
+    [InlineData(true, "foo")]
+    [InlineData(true, "remove-operators", "alice")]
+    [InlineData(false)]
+    [InlineData(false, "create-operator", "alice")]
+    [InlineData(false, "--urls", "http://127.0.0.1:8080")]
+    [InlineData(false, "--urls=http://127.0.0.1:8080")]
+    [InlineData(false, "/urls", "http://127.0.0.1:8080")]
+    [InlineData(false, "Inbox:DataPath=/srv/cvd-inbox")]
+    public void Only_configuration_arguments_and_known_commands_reach_the_app(bool unknown, params string[] args) =>
+        Assert.Equal(unknown, OperatorCommand.IsUnknownCommand(args));
+
     private static async Task<(int Exit, string Output, string Error)> RunAsync(InboxApp app, string[] args, string input)
     {
         using var output = new StringWriter();

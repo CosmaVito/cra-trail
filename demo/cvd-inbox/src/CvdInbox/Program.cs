@@ -10,10 +10,18 @@ using CvdInbox.Reports;
 using CvdInbox.Retention;
 using CvdInbox.Security;
 
+if (OperatorCommand.IsUnknownCommand(args))
+{
+    await Console.Error.WriteLineAsync(OperatorCommand.Usage);
+    return 2;
+}
+
 // "cvd-inbox create-operator <name>" runs a command instead of the server. The check comes after Build(),
 // because the EF Core tools stop the program there.
-var runCommand = args is [OperatorCommand.Name, ..];
-var builder = WebApplication.CreateBuilder(runCommand ? [] : args);
+var runCommand = OperatorCommand.IsCommand(args);
+// The content root is the app's folder, not the working directory: appsettings.json, wwwroot and a relative
+// Inbox:DataPath are the same wherever the app is started from.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = runCommand ? [] : args, ContentRootPath = AppContext.BaseDirectory });
 
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 

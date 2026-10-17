@@ -18,7 +18,7 @@ To use a host folder instead of a named volume, give it to UID 1654 first: `chow
 
 `scripts/container-smoke.sh` starts the image with exactly these options and checks it.
 
-**Zip.** Install the ASP.NET Core Runtime 10, unzip, set the configuration and run `./cvd-inbox` as a dedicated user that owns only the data folder, for example from a systemd unit. The app looks for `appsettings.json`, the client files in `wwwroot/` and a relative `Inbox__DataPath`, such as the default `data`, in the current directory. Start it from the unzipped folder: in a systemd unit, set `WorkingDirectory=` to that folder. Run `create-operator` as the same user, with the same environment and working directory, or it can create a separate database that the service never reads.
+**Zip.** Install the ASP.NET Core Runtime 10, unzip, set the configuration and run `./cvd-inbox` as a dedicated user that owns only the data folder, for example from a systemd unit. The app reads `appsettings.json` and the client files in `wwwroot/` from its own folder, and a relative `Inbox__DataPath`, such as the default `data`, starts from that folder too, whatever the current directory. Run `create-operator` as the same user and with the same environment, or it can create a separate database that the service never reads.
 
 ## TLS and reverse proxy
 
